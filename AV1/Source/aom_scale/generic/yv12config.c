@@ -44,7 +44,7 @@ int aom_free_frame_buffer(YV12_BUFFER_CONFIG *ybf) {
 
   return 0;
 }
-
+//called in setup_buffer_pool() in decodeframe.c
 int aom_realloc_frame_buffer(YV12_BUFFER_CONFIG *ybf, int width, int height,
                              int ss_x, int ss_y, int use_highbitdepth,
                              int border, int byte_alignment,

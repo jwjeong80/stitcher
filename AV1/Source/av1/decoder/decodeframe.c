@@ -14,7 +14,7 @@
 
 #include "config/aom_config.h"
 #include "config/aom_dsp_rtcd.h"
-#include "config/aom_scale_rtcd.h"
+//#include "config/aom_scale_rtcd.h"
 #include "config/av1_rtcd.h"
 
 #include "aom/aom_codec.h"
@@ -43,23 +43,23 @@
 #include "av1/common/entropy.h"
 #include "av1/common/entropymode.h"
 #include "av1/common/entropymv.h"
-#include "av1/common/idct.h"
+//#include "av1/common/idct.h"
 #include "av1/common/mvref_common.h"
-#include "av1/common/pred_common.h"
+//#include "av1/common/pred_common.h"
 #include "av1/common/quant_common.h"
-#include "av1/common/reconinter.h"
+//#include "av1/common/reconinter.h"
 #include "av1/common/reconintra.h"
 #include "av1/common/resize.h"
 #include "av1/common/seg_common.h"
 #include "av1/common/thread_common.h"
 #include "av1/common/tile_common.h"
 #include "av1/common/warped_motion.h"
-#include "av1/common/obmc.h"
+//#include "av1/common/obmc.h"
 #include "av1/decoder/decodeframe.h"
-#include "av1/decoder/decodemv.h"
+//#include "av1/decoder/decodemv.h"
 #include "av1/decoder/decoder.h"
-#include "av1/decoder/decodetxb.h"
-#include "av1/decoder/detokenize.h"
+//#include "av1/decoder/decodetxb.h"
+//#include "av1/decoder/detokenize.h"
 
 #define ACCT_STR __func__
 
@@ -112,35 +112,35 @@ static void set_planes_to_neutral_grey(const SequenceHeader *const seq_params,
 //                                            MACROBLOCKD *xd,
 //                                            aom_reader *const r, int plane,
 //                                            int runit_idx);
-//
-//static void setup_compound_reference_mode(AV1_COMMON *cm) {
-//  cm->comp_fwd_ref[0] = LAST_FRAME;
-//  cm->comp_fwd_ref[1] = LAST2_FRAME;
-//  cm->comp_fwd_ref[2] = LAST3_FRAME;
-//  cm->comp_fwd_ref[3] = GOLDEN_FRAME;
-//
-//  cm->comp_bwd_ref[0] = BWDREF_FRAME;
-//  cm->comp_bwd_ref[1] = ALTREF2_FRAME;
-//  cm->comp_bwd_ref[2] = ALTREF_FRAME;
-//}
+//called in read_uncompressed_header()
+static void setup_compound_reference_mode(AV1_COMMON *cm) {
+  cm->comp_fwd_ref[0] = LAST_FRAME;
+  cm->comp_fwd_ref[1] = LAST2_FRAME;
+  cm->comp_fwd_ref[2] = LAST3_FRAME;
+  cm->comp_fwd_ref[3] = GOLDEN_FRAME;
 
-//static int read_is_valid(const uint8_t *start, size_t len, const uint8_t *end) {
-//  return len != 0 && len <= (size_t)(end - start);
-//}
-//
-//static TX_MODE read_tx_mode(AV1_COMMON *cm, struct aom_read_bit_buffer *rb) {
-//  if (cm->coded_lossless) return ONLY_4X4;
-//  return aom_rb_read_bit(rb) ? TX_MODE_SELECT : TX_MODE_LARGEST;
-//}
-//
-//static REFERENCE_MODE read_frame_reference_mode(
-//    const AV1_COMMON *cm, struct aom_read_bit_buffer *rb) {
-//  if (frame_is_intra_only(cm)) {
-//    return SINGLE_REFERENCE;
-//  } else {
-//    return aom_rb_read_bit(rb) ? REFERENCE_MODE_SELECT : SINGLE_REFERENCE;
-//  }
-//}
+  cm->comp_bwd_ref[0] = BWDREF_FRAME;
+  cm->comp_bwd_ref[1] = ALTREF2_FRAME;
+  cm->comp_bwd_ref[2] = ALTREF_FRAME;
+}
+
+static int read_is_valid(const uint8_t *start, size_t len, const uint8_t *end) {
+  return len != 0 && len <= (size_t)(end - start);
+}
+//called in read_uncompressed_header()
+static TX_MODE read_tx_mode(AV1_COMMON *cm, struct aom_read_bit_buffer *rb) {
+  if (cm->coded_lossless) return ONLY_4X4;
+  return aom_rb_read_bit(rb) ? TX_MODE_SELECT : TX_MODE_LARGEST;
+}
+//called in read_uncompressed_header()
+static REFERENCE_MODE read_frame_reference_mode(
+    const AV1_COMMON *cm, struct aom_read_bit_buffer *rb) {
+  if (frame_is_intra_only(cm)) {
+    return SINGLE_REFERENCE;
+  } else {
+    return aom_rb_read_bit(rb) ? REFERENCE_MODE_SELECT : SINGLE_REFERENCE;
+  }
+}
 //
 //static void inverse_transform_block(MACROBLOCKD *xd, int plane,
 //                                    const TX_TYPE tx_type,
@@ -1580,152 +1580,153 @@ static void set_planes_to_neutral_grey(const SequenceHeader *const seq_params,
 //    update_ext_partition_context(xd, mi_row, mi_col, subsize, bsize, partition);
 //}
 
-//static void setup_bool_decoder(const uint8_t *data, const uint8_t *data_end,
-//                               const size_t read_size,
-//                               struct aom_internal_error_info *error_info,
-//                               aom_reader *r, uint8_t allow_update_cdf) {
-//  // Validate the calculated partition length. If the buffer
-//  // described by the partition can't be fully read, then restrict
-//  // it to the portion that can be (for EC mode) or throw an error.
-//  if (!read_is_valid(data, read_size, data_end))
-//    aom_internal_error(error_info, AOM_CODEC_CORRUPT_FRAME,
-//                       "Truncated packet or corrupt tile length");
-//
-//  if (aom_reader_init(r, data, read_size))
-//    aom_internal_error(error_info, AOM_CODEC_MEM_ERROR,
-//                       "Failed to allocate bool decoder %d", 1);
-//
-//  r->allow_update_cdf = allow_update_cdf;
-//}
-//
-//static void setup_segmentation(AV1_COMMON *const cm,
-//                               struct aom_read_bit_buffer *rb) {
-//  struct segmentation *const seg = &cm->seg;
-//
-//  seg->update_map = 0;
-//  seg->update_data = 0;
-//  seg->temporal_update = 0;
-//
-//  seg->enabled = aom_rb_read_bit(rb);
-//  if (!seg->enabled) {
-//    if (cm->cur_frame->seg_map)
-//      memset(cm->cur_frame->seg_map, 0, (cm->mi_rows * cm->mi_cols));
-//
-//    memset(seg, 0, sizeof(*seg));
-//    segfeatures_copy(&cm->cur_frame->seg, seg);
-//    return;
-//  }
-//  if (cm->seg.enabled && cm->prev_frame &&
-//      (cm->mi_rows == cm->prev_frame->mi_rows) &&
-//      (cm->mi_cols == cm->prev_frame->mi_cols)) {
-//    cm->last_frame_seg_map = cm->prev_frame->seg_map;
-//  } else {
-//    cm->last_frame_seg_map = NULL;
-//  }
-//  // Read update flags
-//  if (cm->primary_ref_frame == PRIMARY_REF_NONE) {
-//    // These frames can't use previous frames, so must signal map + features
-//    seg->update_map = 1;
-//    seg->temporal_update = 0;
-//    seg->update_data = 1;
-//  } else {
-//    seg->update_map = aom_rb_read_bit(rb);
-//    if (seg->update_map) {
-//      seg->temporal_update = aom_rb_read_bit(rb);
-//    } else {
-//      seg->temporal_update = 0;
-//    }
-//    seg->update_data = aom_rb_read_bit(rb);
-//  }
-//
-//  // Segmentation data update
-//  if (seg->update_data) {
-//    av1_clearall_segfeatures(seg);
-//
-//    for (int i = 0; i < MAX_SEGMENTS; i++) {
-//      for (int j = 0; j < SEG_LVL_MAX; j++) {
-//        int data = 0;
-//        const int feature_enabled = aom_rb_read_bit(rb);
-//        if (feature_enabled) {
-//          av1_enable_segfeature(seg, i, j);
-//
-//          const int data_max = av1_seg_feature_data_max(j);
-//          const int data_min = -data_max;
-//          const int ubits = get_unsigned_bits(data_max);
-//
-//          if (av1_is_segfeature_signed(j)) {
-//            data = aom_rb_read_inv_signed_literal(rb, ubits);
-//          } else {
-//            data = aom_rb_read_literal(rb, ubits);
-//          }
-//
-//          data = clamp(data, data_min, data_max);
-//        }
-//        av1_set_segdata(seg, i, j, data);
-//      }
-//    }
-//    calculate_segdata(seg);
-//  } else if (cm->prev_frame) {
-//    segfeatures_copy(seg, &cm->prev_frame->seg);
-//  }
-//  segfeatures_copy(&cm->cur_frame->seg, seg);
-//}
-//
-//static void decode_restoration_mode(AV1_COMMON *cm,
-//                                    struct aom_read_bit_buffer *rb) {
-//  assert(!cm->all_lossless);
-//  const int num_planes = av1_num_planes(cm);
-//  if (cm->allow_intrabc) return;
-//  int all_none = 1, chroma_none = 1;
-//  for (int p = 0; p < num_planes; ++p) {
-//    RestorationInfo *rsi = &cm->rst_info[p];
-//    if (aom_rb_read_bit(rb)) {
-//      rsi->frame_restoration_type =
-//          aom_rb_read_bit(rb) ? RESTORE_SGRPROJ : RESTORE_WIENER;
-//    } else {
-//      rsi->frame_restoration_type =
-//          aom_rb_read_bit(rb) ? RESTORE_SWITCHABLE : RESTORE_NONE;
-//    }
-//    if (rsi->frame_restoration_type != RESTORE_NONE) {
-//      all_none = 0;
-//      chroma_none &= p == 0;
-//    }
-//  }
-//  if (!all_none) {
-//    assert(cm->seq_params.sb_size == BLOCK_64X64 ||
-//           cm->seq_params.sb_size == BLOCK_128X128);
-//    const int sb_size = cm->seq_params.sb_size == BLOCK_128X128 ? 128 : 64;
-//
-//    for (int p = 0; p < num_planes; ++p)
-//      cm->rst_info[p].restoration_unit_size = sb_size;
-//
-//    RestorationInfo *rsi = &cm->rst_info[0];
-//
-//    if (sb_size == 64) {
-//      rsi->restoration_unit_size <<= aom_rb_read_bit(rb);
-//    }
-//    if (rsi->restoration_unit_size > 64) {
-//      rsi->restoration_unit_size <<= aom_rb_read_bit(rb);
-//    }
-//  } else {
-//    const int size = RESTORATION_UNITSIZE_MAX;
-//    for (int p = 0; p < num_planes; ++p)
-//      cm->rst_info[p].restoration_unit_size = size;
-//  }
-//
-//  if (num_planes > 1) {
-//    int s = AOMMIN(cm->seq_params.subsampling_x, cm->seq_params.subsampling_y);
-//    if (s && !chroma_none) {
-//      cm->rst_info[1].restoration_unit_size =
-//          cm->rst_info[0].restoration_unit_size >> (aom_rb_read_bit(rb) * s);
-//    } else {
-//      cm->rst_info[1].restoration_unit_size =
-//          cm->rst_info[0].restoration_unit_size;
-//    }
-//    cm->rst_info[2].restoration_unit_size =
-//        cm->rst_info[1].restoration_unit_size;
-//  }
-//}
+static void setup_bool_decoder(const uint8_t *data, const uint8_t *data_end,
+                               const size_t read_size,
+                               struct aom_internal_error_info *error_info,
+                               aom_reader *r, uint8_t allow_update_cdf) {
+  // Validate the calculated partition length. If the buffer
+  // described by the partition can't be fully read, then restrict
+  // it to the portion that can be (for EC mode) or throw an error.
+  if (!read_is_valid(data, read_size, data_end))
+    aom_internal_error(error_info, AOM_CODEC_CORRUPT_FRAME,
+                       "Truncated packet or corrupt tile length");
+
+  if (aom_reader_init(r, data, read_size))
+    aom_internal_error(error_info, AOM_CODEC_MEM_ERROR,
+                       "Failed to allocate bool decoder %d", 1);
+
+  r->allow_update_cdf = allow_update_cdf;
+}
+
+//called in read_uncompressed_header()
+static void setup_segmentation(AV1_COMMON *const cm,
+                               struct aom_read_bit_buffer *rb) {
+  struct segmentation *const seg = &cm->seg; //struct segmentation: seg_common.h
+
+  seg->update_map = 0;
+  seg->update_data = 0;
+  seg->temporal_update = 0;
+
+  seg->enabled = aom_rb_read_bit(rb);
+  if (!seg->enabled) {
+    if (cm->cur_frame->seg_map)
+      memset(cm->cur_frame->seg_map, 0, (cm->mi_rows * cm->mi_cols));
+
+    memset(seg, 0, sizeof(*seg));
+    segfeatures_copy(&cm->cur_frame->seg, seg); //seg_common.h 
+    return;
+  }
+  if (cm->seg.enabled && cm->prev_frame &&
+      (cm->mi_rows == cm->prev_frame->mi_rows) &&
+      (cm->mi_cols == cm->prev_frame->mi_cols)) {
+    cm->last_frame_seg_map = cm->prev_frame->seg_map;
+  } else {
+    cm->last_frame_seg_map = NULL;
+  }
+  // Read update flags
+  if (cm->primary_ref_frame == PRIMARY_REF_NONE) {
+    // These frames can't use previous frames, so must signal map + features
+    seg->update_map = 1;
+    seg->temporal_update = 0;
+    seg->update_data = 1;
+  } else {
+    seg->update_map = aom_rb_read_bit(rb);
+    if (seg->update_map) {
+      seg->temporal_update = aom_rb_read_bit(rb);
+    } else {
+      seg->temporal_update = 0;
+    }
+    seg->update_data = aom_rb_read_bit(rb);
+  }
+
+  // Segmentation data update
+  if (seg->update_data) {
+    av1_clearall_segfeatures(seg); //seg_common.c 
+
+    for (int i = 0; i < MAX_SEGMENTS; i++) {
+      for (int j = 0; j < SEG_LVL_MAX; j++) {
+        int data = 0;
+        const int feature_enabled = aom_rb_read_bit(rb);
+        if (feature_enabled) {
+          av1_enable_segfeature(seg, i, j); //seg_common.c
+
+          const int data_max = av1_seg_feature_data_max(j); //seg_common.c
+          const int data_min = -data_max;
+          const int ubits = get_unsigned_bits(data_max); //common.h
+
+          if (av1_is_segfeature_signed(j)) { //seg_common.c
+            data = aom_rb_read_inv_signed_literal(rb, ubits);
+          } else {
+            data = aom_rb_read_literal(rb, ubits);
+          }
+
+          data = clamp(data, data_min, data_max); //aom_dsp_common.h
+        }
+        av1_set_segdata(seg, i, j, data); //seg_common.c
+      }
+    }
+    calculate_segdata(seg); //seg_common.c
+  } else if (cm->prev_frame) {
+    segfeatures_copy(seg, &cm->prev_frame->seg); //seg_common.h 
+  }
+  segfeatures_copy(&cm->cur_frame->seg, seg); //seg_common.h 
+}
+//called in read_uncompressed_header()
+static void decode_restoration_mode(AV1_COMMON *cm,
+                                    struct aom_read_bit_buffer *rb) {
+  assert(!cm->all_lossless);
+  const int num_planes = av1_num_planes(cm);
+  if (cm->allow_intrabc) return;
+  int all_none = 1, chroma_none = 1;
+  for (int p = 0; p < num_planes; ++p) {
+    RestorationInfo *rsi = &cm->rst_info[p]; //restoration.h
+    if (aom_rb_read_bit(rb)) {
+      rsi->frame_restoration_type =
+          aom_rb_read_bit(rb) ? RESTORE_SGRPROJ : RESTORE_WIENER;
+    } else {
+      rsi->frame_restoration_type =
+          aom_rb_read_bit(rb) ? RESTORE_SWITCHABLE : RESTORE_NONE;
+    }
+    if (rsi->frame_restoration_type != RESTORE_NONE) {
+      all_none = 0;
+      chroma_none &= p == 0;
+    }
+  }
+  if (!all_none) {
+    assert(cm->seq_params.sb_size == BLOCK_64X64 ||
+           cm->seq_params.sb_size == BLOCK_128X128);
+    const int sb_size = cm->seq_params.sb_size == BLOCK_128X128 ? 128 : 64;
+
+    for (int p = 0; p < num_planes; ++p)
+      cm->rst_info[p].restoration_unit_size = sb_size;
+
+    RestorationInfo *rsi = &cm->rst_info[0];
+
+    if (sb_size == 64) {
+      rsi->restoration_unit_size <<= aom_rb_read_bit(rb);
+    }
+    if (rsi->restoration_unit_size > 64) {
+      rsi->restoration_unit_size <<= aom_rb_read_bit(rb);
+    }
+  } else {
+    const int size = RESTORATION_UNITSIZE_MAX; //resotoration.h
+    for (int p = 0; p < num_planes; ++p)
+      cm->rst_info[p].restoration_unit_size = size;
+  }
+
+  if (num_planes > 1) {
+    int s = AOMMIN(cm->seq_params.subsampling_x, cm->seq_params.subsampling_y);
+    if (s && !chroma_none) {
+      cm->rst_info[1].restoration_unit_size =
+          cm->rst_info[0].restoration_unit_size >> (aom_rb_read_bit(rb) * s);
+    } else {
+      cm->rst_info[1].restoration_unit_size =
+          cm->rst_info[0].restoration_unit_size;
+    }
+    cm->rst_info[2].restoration_unit_size =
+        cm->rst_info[1].restoration_unit_size;
+  }
+}
 //
 //static void read_wiener_filter(int wiener_win, WienerInfo *wiener_info,
 //                               WienerInfo *ref_wiener_info, aom_reader *rb) {
@@ -1866,59 +1867,61 @@ static void set_planes_to_neutral_grey(const SequenceHeader *const seq_params,
 //  }
 //}
 //
-//static void setup_loopfilter(AV1_COMMON *cm, struct aom_read_bit_buffer *rb) {
-//  const int num_planes = av1_num_planes(cm);
-//  struct loopfilter *lf = &cm->lf;
-//  if (cm->allow_intrabc || cm->coded_lossless) {
-//    // write default deltas to frame buffer
-//    av1_set_default_ref_deltas(cm->cur_frame->ref_deltas);
-//    av1_set_default_mode_deltas(cm->cur_frame->mode_deltas);
-//    return;
-//  }
-//  assert(!cm->coded_lossless);
-//  if (cm->prev_frame) {
-//    // write deltas to frame buffer
-//    memcpy(lf->ref_deltas, cm->prev_frame->ref_deltas, REF_FRAMES);
-//    memcpy(lf->mode_deltas, cm->prev_frame->mode_deltas, MAX_MODE_LF_DELTAS);
-//  } else {
-//    av1_set_default_ref_deltas(lf->ref_deltas);
-//    av1_set_default_mode_deltas(lf->mode_deltas);
-//  }
-//  lf->filter_level[0] = aom_rb_read_literal(rb, 6);
-//  lf->filter_level[1] = aom_rb_read_literal(rb, 6);
-//  if (num_planes > 1) {
-//    if (lf->filter_level[0] || lf->filter_level[1]) {
-//      lf->filter_level_u = aom_rb_read_literal(rb, 6);
-//      lf->filter_level_v = aom_rb_read_literal(rb, 6);
-//    }
-//  }
-//  lf->sharpness_level = aom_rb_read_literal(rb, 3);
-//
-//  // Read in loop filter deltas applied at the MB level based on mode or ref
-//  // frame.
-//  lf->mode_ref_delta_update = 0;
-//
-//  lf->mode_ref_delta_enabled = aom_rb_read_bit(rb);
-//  if (lf->mode_ref_delta_enabled) {
-//    lf->mode_ref_delta_update = aom_rb_read_bit(rb);
-//    if (lf->mode_ref_delta_update) {
-//      for (int i = 0; i < REF_FRAMES; i++)
-//        if (aom_rb_read_bit(rb))
-//          lf->ref_deltas[i] = aom_rb_read_inv_signed_literal(rb, 6);
-//
-//      for (int i = 0; i < MAX_MODE_LF_DELTAS; i++)
-//        if (aom_rb_read_bit(rb))
-//          lf->mode_deltas[i] = aom_rb_read_inv_signed_literal(rb, 6);
-//    }
-//  }
-//
-//  // write deltas to frame buffer
-//  memcpy(cm->cur_frame->ref_deltas, lf->ref_deltas, REF_FRAMES);
-//  memcpy(cm->cur_frame->mode_deltas, lf->mode_deltas, MAX_MODE_LF_DELTAS);
-//}
+//called in read_uncompressed_header()
+static void setup_loopfilter(AV1_COMMON *cm, struct aom_read_bit_buffer *rb) {
+  const int num_planes = av1_num_planes(cm); //onyxc_int.h
+  struct loopfilter *lf = &cm->lf;
+  if (cm->allow_intrabc || cm->coded_lossless) {
+    // write default deltas to frame buffer
+    av1_set_default_ref_deltas(cm->cur_frame->ref_deltas); //entropymode.c
+    av1_set_default_mode_deltas(cm->cur_frame->mode_deltas); //entropymode.c
+    return;
+  }
+  assert(!cm->coded_lossless);
+  if (cm->prev_frame) {
+    // write deltas to frame buffer
+    memcpy(lf->ref_deltas, cm->prev_frame->ref_deltas, REF_FRAMES);
+    memcpy(lf->mode_deltas, cm->prev_frame->mode_deltas, MAX_MODE_LF_DELTAS);
+  } else {
+    av1_set_default_ref_deltas(lf->ref_deltas); //entropymode.c
+    av1_set_default_mode_deltas(lf->mode_deltas); //entropymode.c
+  }
+  lf->filter_level[0] = aom_rb_read_literal(rb, 6);
+  lf->filter_level[1] = aom_rb_read_literal(rb, 6);
+  if (num_planes > 1) {
+    if (lf->filter_level[0] || lf->filter_level[1]) {
+      lf->filter_level_u = aom_rb_read_literal(rb, 6);
+      lf->filter_level_v = aom_rb_read_literal(rb, 6);
+    }
+  }
+  lf->sharpness_level = aom_rb_read_literal(rb, 3);
 
+  // Read in loop filter deltas applied at the MB level based on mode or ref
+  // frame.
+  lf->mode_ref_delta_update = 0;
+
+  lf->mode_ref_delta_enabled = aom_rb_read_bit(rb);
+  if (lf->mode_ref_delta_enabled) {
+    lf->mode_ref_delta_update = aom_rb_read_bit(rb);
+    if (lf->mode_ref_delta_update) {
+      for (int i = 0; i < REF_FRAMES; i++)
+        if (aom_rb_read_bit(rb))
+          lf->ref_deltas[i] = aom_rb_read_inv_signed_literal(rb, 6);
+
+      for (int i = 0; i < MAX_MODE_LF_DELTAS; i++)
+        if (aom_rb_read_bit(rb))
+          lf->mode_deltas[i] = aom_rb_read_inv_signed_literal(rb, 6);
+    }
+  }
+
+  // write deltas to frame buffer
+  memcpy(cm->cur_frame->ref_deltas, lf->ref_deltas, REF_FRAMES);
+  memcpy(cm->cur_frame->mode_deltas, lf->mode_deltas, MAX_MODE_LF_DELTAS);
+}
+
+//called in read_uncompressed_header()
 static void setup_cdef(AV1_COMMON *cm, struct aom_read_bit_buffer *rb) {
-  const int num_planes = av1_num_planes(cm);
+  const int num_planes = av1_num_planes(cm); //onyxc_int.h 
   if (cm->allow_intrabc) return;
   cm->cdef_pri_damping = cm->cdef_sec_damping = aom_rb_read_literal(rb, 2) + 3;
   cm->cdef_bits = aom_rb_read_literal(rb, 2);
@@ -1933,12 +1936,12 @@ static void setup_cdef(AV1_COMMON *cm, struct aom_read_bit_buffer *rb) {
 static INLINE int read_delta_q(struct aom_read_bit_buffer *rb) {
   return aom_rb_read_bit(rb) ? aom_rb_read_inv_signed_literal(rb, 6) : 0;
 }
-
+//called in read_uncompressed_header()
 static void setup_quantization(AV1_COMMON *const cm,
                                struct aom_read_bit_buffer *rb) {
   const SequenceHeader *const seq_params = &cm->seq_params;
   const int num_planes = av1_num_planes(cm);
-  cm->base_qindex = aom_rb_read_literal(rb, QINDEX_BITS);
+  cm->base_qindex = aom_rb_read_literal(rb, QINDEX_BITS); //QINDEX_BITS: quant_common.h
   cm->y_dc_delta_q = read_delta_q(rb);
   if (num_planes > 1) {
     int diff_uv_delta = 0;
@@ -1961,7 +1964,7 @@ static void setup_quantization(AV1_COMMON *const cm,
   cm->dequant_bit_depth = seq_params->bit_depth;
   cm->using_qmatrix = aom_rb_read_bit(rb);
   if (cm->using_qmatrix) {
-    cm->qm_y = aom_rb_read_literal(rb, QM_LEVEL_BITS);
+    cm->qm_y = aom_rb_read_literal(rb, QM_LEVEL_BITS); //QM_LEVEL_BITS: quant_common.h
     cm->qm_u = aom_rb_read_literal(rb, QM_LEVEL_BITS);
     if (!seq_params->separate_uv_delta_q)
       cm->qm_v = cm->qm_u;
@@ -1975,6 +1978,7 @@ static void setup_quantization(AV1_COMMON *const cm,
 }
 
 // Build y/uv dequant values based on segmentation.
+//called in read_uncompressed_header() 
 static void setup_segmentation_dequant(AV1_COMMON *const cm) {
   const int bit_depth = cm->seq_params.bit_depth;
   const int using_qm = cm->using_qmatrix;
@@ -1982,18 +1986,18 @@ static void setup_segmentation_dequant(AV1_COMMON *const cm) {
   // remaining are don't cares.
   const int max_segments = cm->seg.enabled ? MAX_SEGMENTS : 1;
   for (int i = 0; i < max_segments; ++i) {
-    const int qindex = av1_get_qindex(&cm->seg, i, cm->base_qindex);
-    cm->y_dequant_QTX[i][0] =
-        av1_dc_quant_QTX(qindex, cm->y_dc_delta_q, bit_depth);
+    const int qindex = av1_get_qindex(&cm->seg, i, cm->base_qindex); //quant_common.c
+    cm->y_dequant_QTX[i][0] = 
+        av1_dc_quant_QTX(qindex, cm->y_dc_delta_q, bit_depth); //quant_common.c 
     cm->y_dequant_QTX[i][1] = av1_ac_quant_QTX(qindex, 0, bit_depth);
     cm->u_dequant_QTX[i][0] =
-        av1_dc_quant_QTX(qindex, cm->u_dc_delta_q, bit_depth);
+        av1_dc_quant_QTX(qindex, cm->u_dc_delta_q, bit_depth); //quant_common.c 
     cm->u_dequant_QTX[i][1] =
-        av1_ac_quant_QTX(qindex, cm->u_ac_delta_q, bit_depth);
+        av1_ac_quant_QTX(qindex, cm->u_ac_delta_q, bit_depth);  //quant_common.c 
     cm->v_dequant_QTX[i][0] =
-        av1_dc_quant_QTX(qindex, cm->v_dc_delta_q, bit_depth);
+        av1_dc_quant_QTX(qindex, cm->v_dc_delta_q, bit_depth);  //quant_common.c 
     cm->v_dequant_QTX[i][1] =
-        av1_ac_quant_QTX(qindex, cm->v_ac_delta_q, bit_depth);
+        av1_ac_quant_QTX(qindex, cm->v_ac_delta_q, bit_depth);  //quant_common.c 
     const int lossless = qindex == 0 && cm->y_dc_delta_q == 0 &&
                          cm->u_dc_delta_q == 0 && cm->u_ac_delta_q == 0 &&
                          cm->v_dc_delta_q == 0 && cm->v_ac_delta_q == 0;
@@ -2001,15 +2005,15 @@ static void setup_segmentation_dequant(AV1_COMMON *const cm) {
     // No quant weighting when lossless or signalled not using QM
     int qmlevel = (lossless || using_qm == 0) ? NUM_QM_LEVELS - 1 : cm->qm_y;
     for (int j = 0; j < TX_SIZES_ALL; ++j) {
-      cm->y_iqmatrix[i][j] = av1_iqmatrix(cm, qmlevel, AOM_PLANE_Y, j);
+      cm->y_iqmatrix[i][j] = av1_iqmatrix(cm, qmlevel, AOM_PLANE_Y, j);  //quant_common.c 
     }
     qmlevel = (lossless || using_qm == 0) ? NUM_QM_LEVELS - 1 : cm->qm_u;
     for (int j = 0; j < TX_SIZES_ALL; ++j) {
-      cm->u_iqmatrix[i][j] = av1_iqmatrix(cm, qmlevel, AOM_PLANE_U, j);
+      cm->u_iqmatrix[i][j] = av1_iqmatrix(cm, qmlevel, AOM_PLANE_U, j);  //quant_common.c 
     }
     qmlevel = (lossless || using_qm == 0) ? NUM_QM_LEVELS - 1 : cm->qm_v;
     for (int j = 0; j < TX_SIZES_ALL; ++j) {
-      cm->v_iqmatrix[i][j] = av1_iqmatrix(cm, qmlevel, AOM_PLANE_V, j);
+      cm->v_iqmatrix[i][j] = av1_iqmatrix(cm, qmlevel, AOM_PLANE_V, j);  //quant_common.c 
     }
   }
 }
@@ -2313,7 +2317,7 @@ void av1_set_single_tile_decoding_mode(AV1_COMMON *const cm) {
     cm->single_tile_decoding = no_loopfilter && no_cdef && no_restoration;
   }
 }
-
+//called in read_uncompressed_header()
 static void read_tile_info(AV1Decoder *const pbi,
                            struct aom_read_bit_buffer *const rb) {
   AV1_COMMON *const cm = &pbi->common;
@@ -2768,8 +2772,8 @@ static void decode_tile_sb_row(AV1Decoder *pbi, ThreadData *const td,
     sync_read(&tile_data->dec_row_mt_sync, sb_row_in_tile, sb_col_in_tile);
 
     // Decoding of the super-block
-    decode_partition(pbi, td, mi_row, mi_col, td->bit_reader,
-                     cm->seq_params.sb_size, 0x2);
+    //decode_partition(pbi, td, mi_row, mi_col, td->bit_reader, //removed
+    //                 cm->seq_params.sb_size, 0x2);
 
     sync_write(&tile_data->dec_row_mt_sync, sb_row_in_tile, sb_col_in_tile,
                sb_cols_in_tile);
@@ -2802,26 +2806,26 @@ static int check_trailing_bits_after_symbol_coder(aom_reader *r) {
   return 0;
 }
 
-static void set_decode_func_pointers(ThreadData *td, int parse_decode_flag) {
-  td->read_coeffs_tx_intra_block_visit = decode_block_void;
-  td->predict_and_recon_intra_block_visit = decode_block_void;
-  td->read_coeffs_tx_inter_block_visit = decode_block_void;
-  td->inverse_tx_inter_block_visit = decode_block_void;
-  td->predict_inter_block_visit = predict_inter_block_void;
-  td->cfl_store_inter_block_visit = cfl_store_inter_block_void;
-
-  if (parse_decode_flag & 0x1) {
-    td->read_coeffs_tx_intra_block_visit = read_coeffs_tx_intra_block;
-    td->read_coeffs_tx_inter_block_visit = av1_read_coeffs_txb_facade;
-  }
-  if (parse_decode_flag & 0x2) {
-    td->predict_and_recon_intra_block_visit =
-        predict_and_reconstruct_intra_block;
-    td->inverse_tx_inter_block_visit = inverse_transform_inter_block;
-    td->predict_inter_block_visit = predict_inter_block;
-    td->cfl_store_inter_block_visit = cfl_store_inter_block;
-  }
-}
+//static void set_decode_func_pointers(ThreadData *td, int parse_decode_flag) {
+//  td->read_coeffs_tx_intra_block_visit = decode_block_void;
+//  td->predict_and_recon_intra_block_visit = decode_block_void;
+//  td->read_coeffs_tx_inter_block_visit = decode_block_void;
+//  td->inverse_tx_inter_block_visit = decode_block_void;
+//  td->predict_inter_block_visit = predict_inter_block_void;
+//  td->cfl_store_inter_block_visit = cfl_store_inter_block_void;
+//
+//  if (parse_decode_flag & 0x1) {
+//    td->read_coeffs_tx_intra_block_visit = read_coeffs_tx_intra_block;
+//    td->read_coeffs_tx_inter_block_visit = av1_read_coeffs_txb_facade;
+//  }
+//  if (parse_decode_flag & 0x2) {
+//    td->predict_and_recon_intra_block_visit =
+//        predict_and_reconstruct_intra_block;
+//    td->inverse_tx_inter_block_visit = inverse_transform_inter_block;
+//    td->predict_inter_block_visit = predict_inter_block;
+//    td->cfl_store_inter_block_visit = cfl_store_inter_block;
+//  }
+//}
 
 static void decode_tile(AV1Decoder *pbi, ThreadData *const td, int tile_row,
                         int tile_col) {
@@ -2846,8 +2850,8 @@ static void decode_tile(AV1Decoder *pbi, ThreadData *const td, int tile_row,
       set_cb_buffer(pbi, &td->xd, &td->cb_buffer_base, num_planes, 0, 0);
 
       // Bit-stream parsing and decoding of the superblock
-      decode_partition(pbi, td, mi_row, mi_col, td->bit_reader,
-                       cm->seq_params.sb_size, 0x3);
+      //decode_partition(pbi, td, mi_row, mi_col, td->bit_reader, //removed
+      //                 cm->seq_params.sb_size, 0x3);
     }
   }
 
@@ -2928,7 +2932,7 @@ static const uint8_t *decode_tiles(AV1Decoder *pbi, const uint8_t *data,
   }
 #endif
 
-  set_decode_func_pointers(&pbi->td, 0x3);
+  //set_decode_func_pointers(&pbi->td, 0x3); //removed
 
   // Load all tile information into thread_data.
   td->xd = pbi->mb;
@@ -3069,7 +3073,7 @@ static int tile_worker_hook(void *arg1, void *arg2) {
   allow_update_cdf = cm->large_scale_tile ? 0 : 1;
   allow_update_cdf = allow_update_cdf && !cm->disable_cdf_update;
 
-  set_decode_func_pointers(td, 0x3);
+  //set_decode_func_pointers(td, 0x3); removed
 
   assert(cm->tile_cols > 0);
   while (1) {
@@ -3241,7 +3245,7 @@ static int row_mt_worker_hook(void *arg1, void *arg2) {
       tile_worker_hook_init(pbi, thread_data, tile_buffer, tile_data,
                             allow_update_cdf);
 
-      set_decode_func_pointers(td, 0x1);
+      //set_decode_func_pointers(td, 0x1); //removed
 
       // decode tile
       TileInfo tile_info = tile_data->tile_info;
@@ -3262,8 +3266,8 @@ static int row_mt_worker_hook(void *arg1, void *arg2) {
                         mi_col);
 
           // Bit-stream parsing of the superblock
-          decode_partition(pbi, td, mi_row, mi_col, td->bit_reader,
-                           cm->seq_params.sb_size, 0x1);
+          //decode_partition(pbi, td, mi_row, mi_col, td->bit_reader, //removed
+          //                 cm->seq_params.sb_size, 0x1);
         }
         signal_parse_sb_row_done(pbi, tile_data, sb_mi_size);
       }
@@ -3276,7 +3280,7 @@ static int row_mt_worker_hook(void *arg1, void *arg2) {
     }
   }
 
-  set_decode_func_pointers(td, 0x2);
+  //set_decode_func_pointers(td, 0x2); //removed
 
   while (1) {
     AV1DecRowMTJobInfo next_job_info;
@@ -3854,11 +3858,7 @@ void av1_read_film_grain_params(AV1_COMMON *cm,
   else
     pars->update_parameters = 1;
 
-<<<<<<< HEAD
   pars->bit_depth = seq_params->bit_depth;
-=======
-  pars->bit_depth = cm->bit_depth;
->>>>>>> 1b74dd85475a1904001f00156d5ec439492941a5
 
   if (!pars->update_parameters) {
     // inherit parameters from a previous reference frame
@@ -4133,7 +4133,7 @@ void av1_read_op_parameters_info(AV1_COMMON *const cm,
 
   cm->op_params[op_num].low_delay_mode_flag = aom_rb_read_bit(rb);
 }
-//called i read_uncompressed_header
+//called in read_uncompressed_header()
 static void av1_read_temporal_point_info(AV1_COMMON *const cm,
                                          struct aom_read_bit_buffer *rb) {
   cm->frame_presentation_time = aom_rb_read_unsigned_literal(
@@ -4222,7 +4222,7 @@ void av1_read_sequence_header(AV1_COMMON *cm, struct aom_read_bit_buffer *rb,
   seq_params->enable_cdef = aom_rb_read_bit(rb);
   seq_params->enable_restoration = aom_rb_read_bit(rb);
 }
-
+//called in read_global_motion() 
 static int read_global_motion_params(WarpedMotionParams *params,
                                      const WarpedMotionParams *ref_params,
                                      struct aom_read_bit_buffer *rb,
@@ -4239,13 +4239,13 @@ static int read_global_motion_params(WarpedMotionParams *params,
   params->wmtype = type;
 
   if (type >= ROTZOOM) {
-    params->wmmat[2] = aom_rb_read_signed_primitive_refsubexpfin(
+    params->wmmat[2] = aom_rb_read_signed_primitive_refsubexpfin(   //bindary_codes_reader.c
                            rb, GM_ALPHA_MAX + 1, SUBEXPFIN_K,
                            (ref_params->wmmat[2] >> GM_ALPHA_PREC_DIFF) -
                                (1 << GM_ALPHA_PREC_BITS)) *
                            GM_ALPHA_DECODE_FACTOR +
                        (1 << WARPEDMODEL_PREC_BITS);
-    params->wmmat[3] = aom_rb_read_signed_primitive_refsubexpfin(
+    params->wmmat[3] = aom_rb_read_signed_primitive_refsubexpfin( //bindary_codes_reader.c
                            rb, GM_ALPHA_MAX + 1, SUBEXPFIN_K,
                            (ref_params->wmmat[3] >> GM_ALPHA_PREC_DIFF)) *
                        GM_ALPHA_DECODE_FACTOR;
@@ -4288,18 +4288,18 @@ static int read_global_motion_params(WarpedMotionParams *params,
   }
 
   if (params->wmtype <= AFFINE) {
-    int good_shear_params = get_shear_params(params);
+    int good_shear_params = get_shear_params(params); //warped_motion.c
     if (!good_shear_params) return 0;
   }
 
   return 1;
 }
-
+//called in read_uncompressed_header()
 static void read_global_motion(AV1_COMMON *cm, struct aom_read_bit_buffer *rb) {
   for (int frame = LAST_FRAME; frame <= ALTREF_FRAME; ++frame) {
-    const WarpedMotionParams *ref_params =
+    const WarpedMotionParams *ref_params =  // WarpedMotionParams : mv.h
         cm->prev_frame ? &cm->prev_frame->global_motion[frame]
-                       : &default_warp_params;
+                       : &default_warp_params;     // default_warp_params : mv.h
     int good_params = read_global_motion_params(
         &cm->global_motion[frame], ref_params, rb, cm->allow_high_precision_mv);
     if (!good_params) {
@@ -4335,7 +4335,7 @@ static void read_global_motion(AV1_COMMON *cm, struct aom_read_bit_buffer *rb) {
   memcpy(cm->cur_frame->global_motion, cm->global_motion,
          REF_FRAMES * sizeof(WarpedMotionParams));
 }
-//called in read_uncompressed_header
+//called in read_uncompressed_header()
 static void show_existing_frame_reset(AV1Decoder *const pbi,
                                       int existing_frame_idx) {
   AV1_COMMON *const cm = &pbi->common;
@@ -4410,7 +4410,7 @@ static void show_existing_frame_reset(AV1Decoder *const pbi,
 
 // On success, returns 0. On failure, calls aom_internal_error and does not
 // return.
-//call in av1_decode_frame_headers_and_setup
+//call in av1_decode_frame_headers_and_setup()
 static int read_uncompressed_header(AV1Decoder *pbi,
                                     struct aom_read_bit_buffer *rb) {
   AV1_COMMON *const cm = &pbi->common;
@@ -4445,7 +4445,7 @@ static int read_uncompressed_header(AV1Decoder *pbi,
       const int frame_to_show = cm->ref_frame_map[existing_frame_idx];
       if (seq_params->decoder_model_info_present_flag &&
           cm->timing_info.equal_picture_interval == 0) {
-        av1_read_temporal_point_info(cm, rb);
+        av1_read_temporal_point_info(cm, rb); //decodeframe.c
       }
       if (seq_params->frame_id_numbers_present_flag) {
         int frame_id_length = seq_params->frame_id_length;
@@ -4464,7 +4464,7 @@ static int read_uncompressed_header(AV1Decoder *pbi,
                            "Buffer %d does not contain a decoded frame",
                            frame_to_show);
       }
-      ref_cnt_fb(frame_bufs, &cm->new_fb_idx, frame_to_show);
+      ref_cnt_fb(frame_bufs, &cm->new_fb_idx, frame_to_show); //onyxc_int.h
       cm->reset_decoder_state =
           frame_bufs[frame_to_show].frame_type == KEY_FRAME;
       unlock_buffer_pool(pool);
@@ -4579,7 +4579,7 @@ static int read_uncompressed_header(AV1Decoder *pbi,
       }
     }
 
-    frame_size_override_flag = frame_is_sframe(cm) ? 1 : aom_rb_read_bit(rb);
+    frame_size_override_flag = frame_is_sframe(cm) ? 1 : aom_rb_read_bit(rb); //onyxc_int.h 
 
     cm->frame_offset =
         aom_rb_read_literal(rb, seq_params->order_hint_bits_minus_1 + 1);
@@ -4822,16 +4822,16 @@ static int read_uncompressed_header(AV1Decoder *pbi,
         av1_setup_scale_factors_for_frame(  //scale.c
             &ref_buf->sf, ref_buf->buf->y_crop_width,
             ref_buf->buf->y_crop_height, cm->width, cm->height);
-        if ((!av1_is_valid_scale(&ref_buf->sf)))
+        if ((!av1_is_valid_scale(&ref_buf->sf))) //scale.h
           aom_internal_error(&cm->error, AOM_CODEC_UNSUP_BITSTREAM,
                              "Reference frame has invalid dimensions");
       }
     }
   }
 
-  av1_setup_frame_buf_refs(cm);
+  av1_setup_frame_buf_refs(cm); //mvref_common.c
 
-  av1_setup_frame_sign_bias(cm);
+  av1_setup_frame_sign_bias(cm); //mvref_common.c
 
   cm->cur_frame->intra_only = cm->frame_type == KEY_FRAME || cm->intra_only;
   cm->cur_frame->frame_type = cm->frame_type;
@@ -4916,25 +4916,25 @@ static int read_uncompressed_header(AV1Decoder *pbi,
     cm->rst_info[1].frame_restoration_type = RESTORE_NONE;
     cm->rst_info[2].frame_restoration_type = RESTORE_NONE;
   }
-
-  read_tile_info(pbi, rb);
-  setup_quantization(cm, rb);
+  
+  read_tile_info(pbi, rb); //decodeframe.c
+  setup_quantization(cm, rb); //decodeframe.c
   xd->bd = (int)seq_params->bit_depth;
 
   if (cm->num_allocated_above_context_planes < av1_num_planes(cm) ||
       cm->num_allocated_above_context_mi_col < cm->mi_cols ||
       cm->num_allocated_above_contexts < cm->tile_rows) {
-    av1_free_above_context_buffers(cm, cm->num_allocated_above_contexts);
+    av1_free_above_context_buffers(cm, cm->num_allocated_above_contexts);  //alloccommon.c
     if (av1_alloc_above_context_buffers(cm, cm->tile_rows))
       aom_internal_error(&cm->error, AOM_CODEC_MEM_ERROR,
                          "Failed to allocate context buffers");
   }
 
   if (cm->primary_ref_frame == PRIMARY_REF_NONE) {
-    av1_setup_past_independence(cm);
+    av1_setup_past_independence(cm); //entropymode.c
   }
 
-  setup_segmentation(cm, rb);
+  setup_segmentation(cm, rb); //decodeframe.c
 
   cm->delta_q_res = 1;
   cm->delta_lf_res = 1;
@@ -4948,7 +4948,7 @@ static int read_uncompressed_header(AV1Decoder *pbi,
     if (cm->delta_lf_present_flag) {
       cm->delta_lf_res = 1 << aom_rb_read_literal(rb, 2);
       cm->delta_lf_multi = aom_rb_read_bit(rb);
-      av1_reset_loop_filter_delta(xd, av1_num_planes(cm));
+      av1_reset_loop_filter_delta(xd, av1_num_planes(cm)); //av1_reset_loop_filter_delta: blockd.c //av1_num_planes: onyxc_int.h
     }
   }
 
@@ -4956,16 +4956,16 @@ static int read_uncompressed_header(AV1Decoder *pbi,
 
   for (int i = 0; i < MAX_SEGMENTS; ++i) {
     const int qindex = cm->seg.enabled
-                           ? av1_get_qindex(&cm->seg, i, cm->base_qindex)
+                           ? av1_get_qindex(&cm->seg, i, cm->base_qindex) //quant_common.c
                            : cm->base_qindex;
     xd->lossless[i] = qindex == 0 && cm->y_dc_delta_q == 0 &&
                       cm->u_dc_delta_q == 0 && cm->u_ac_delta_q == 0 &&
                       cm->v_dc_delta_q == 0 && cm->v_ac_delta_q == 0;
     xd->qindex[i] = qindex;
   }
-  cm->coded_lossless = is_coded_lossless(cm, xd);
-  cm->all_lossless = cm->coded_lossless && !av1_superres_scaled(cm);
-  setup_segmentation_dequant(cm);
+  cm->coded_lossless = is_coded_lossless(cm, xd); //onyxc_int.h
+  cm->all_lossless = cm->coded_lossless && !av1_superres_scaled(cm); //resize.h
+  setup_segmentation_dequant(cm); //decodeframe.c
   if (cm->coded_lossless) {
     cm->lf.filter_level[0] = 0;
     cm->lf.filter_level[1] = 0;
@@ -4980,35 +4980,35 @@ static int read_uncompressed_header(AV1Decoder *pbi,
     cm->rst_info[1].frame_restoration_type = RESTORE_NONE;
     cm->rst_info[2].frame_restoration_type = RESTORE_NONE;
   }
-  setup_loopfilter(cm, rb);
+  setup_loopfilter(cm, rb); //decodeframe.c
 
   if (!cm->coded_lossless && seq_params->enable_cdef) {
-    setup_cdef(cm, rb);
+    setup_cdef(cm, rb); //decodeframe.c
   }
   if (!cm->all_lossless && seq_params->enable_restoration) {
-    decode_restoration_mode(cm, rb);
+    decode_restoration_mode(cm, rb); //decodeframe.c
   }
 
-  cm->tx_mode = read_tx_mode(cm, rb);
-  cm->reference_mode = read_frame_reference_mode(cm, rb);
-  if (cm->reference_mode != SINGLE_REFERENCE) setup_compound_reference_mode(cm);
+  cm->tx_mode = read_tx_mode(cm, rb); //decodeframe.c
+  cm->reference_mode = read_frame_reference_mode(cm, rb); //decodeframe.c
+  if (cm->reference_mode != SINGLE_REFERENCE) setup_compound_reference_mode(cm); //decodeframe.c
 
-  av1_setup_skip_mode_allowed(cm);
+  av1_setup_skip_mode_allowed(cm); //mvref_common.c
   cm->skip_mode_flag = cm->is_skip_mode_allowed ? aom_rb_read_bit(rb) : 0;
 
-  if (frame_might_allow_warped_motion(cm))
+  if (frame_might_allow_warped_motion(cm)) //onyxc_int.h
     cm->allow_warped_motion = aom_rb_read_bit(rb);
   else
     cm->allow_warped_motion = 0;
 
   cm->reduced_tx_set_used = aom_rb_read_bit(rb);
 
-  if (cm->allow_ref_frame_mvs && !frame_might_allow_ref_frame_mvs(cm)) {
+  if (cm->allow_ref_frame_mvs && !frame_might_allow_ref_frame_mvs(cm)) { //onyxc_int.h
     aom_internal_error(&cm->error, AOM_CODEC_CORRUPT_FRAME,
                        "Frame wrongly requests reference frame MVs");
   }
 
-  if (!frame_is_intra_only(cm)) read_global_motion(cm, rb);
+  if (!frame_is_intra_only(cm)) read_global_motion(cm, rb); //frame_is_intra_only(): onyxc_int.h, read_global_motion(): decodeframe.c
 
   cm->cur_frame->film_grain_params_present =
       seq_params->film_grain_params_present;
@@ -5197,8 +5197,8 @@ void av1_decode_tg_tiles_and_wrapup(AV1Decoder *pbi, const uint8_t *data,
                                  num_planes, 0, pbi->tile_workers,
                                  pbi->num_workers, &pbi->lf_row_sync);
       } else {
-        av1_loop_filter_frame(get_frame_new_buffer(cm), cm, &pbi->mb, 0,
-                              num_planes, 0);
+        //av1_loop_filter_frame(get_frame_new_buffer(cm), cm, &pbi->mb, 0,
+        //                      num_planes, 0); //removed
       }
 #endif
     }
@@ -5217,7 +5217,7 @@ void av1_decode_tg_tiles_and_wrapup(AV1Decoder *pbi, const uint8_t *data,
       if (do_loop_restoration)
         av1_loop_restoration_save_boundary_lines(&pbi->cur_buf->buf, cm, 0);
 
-      if (do_cdef) av1_cdef_frame(&pbi->cur_buf->buf, cm, &pbi->mb);
+      //if (do_cdef) av1_cdef_frame(&pbi->cur_buf->buf, cm, &pbi->mb); //removed
 
       superres_post_decode(pbi);
 

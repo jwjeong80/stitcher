@@ -41,9 +41,11 @@ struct scale_factors {
 
 MV32 av1_scale_mv(const MV *mv, int x, int y, const struct scale_factors *sf);
 
+//// called in read_uncompressed_header() in decodeframe.c
 void av1_setup_scale_factors_for_frame(struct scale_factors *sf, int other_w,
                                        int other_h, int this_w, int this_h);
 
+//// called in read_uncompressed_header() in decodeframe.c
 static INLINE int av1_is_valid_scale(const struct scale_factors *sf) {
   return sf->x_scale_fp != REF_INVALID_SCALE &&
          sf->y_scale_fp != REF_INVALID_SCALE;

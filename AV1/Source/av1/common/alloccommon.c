@@ -62,7 +62,7 @@ static void free_loop_filter_mask(AV1_COMMON *cm) {
   cm->lf.lfm_stride = 0;
 }
 #endif
-
+//called in resize_context_buffers() in decodeframe.c
 void av1_set_mb_mi(AV1_COMMON *cm, int width, int height) {
   // Ensure that the decoded width and height are both multiples of
   // 8 luma pixels (note: this may only be a multiple of 4 chroma pixels if
@@ -298,4 +298,6 @@ void av1_remove_common(AV1_COMMON *cm) {
   cm->frame_contexts = NULL;
 }
 
+
+//called in resize_context_buffers() in decodeframe.c
 void av1_init_context_buffers(AV1_COMMON *cm) { cm->setup_mi(cm); }

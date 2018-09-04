@@ -609,7 +609,7 @@ static INLINE int get_free_fb(AV1_COMMON *cm) {
   unlock_buffer_pool(cm->buffer_pool);
   return i;
 }
-
+//called in read_uncompressed_header()
 static INLINE void ref_cnt_fb(RefCntBuffer *bufs, int *idx, int new_idx) {
   const int ref_index = *idx;
 
@@ -620,15 +620,15 @@ static INLINE void ref_cnt_fb(RefCntBuffer *bufs, int *idx, int new_idx) {
 
   bufs[new_idx].ref_count++;
 }
-
+//called in frame_might_allow_ref_frame_mvs()
 static INLINE int frame_is_intra_only(const AV1_COMMON *const cm) {
   return cm->frame_type == KEY_FRAME || cm->intra_only;
 }
-
+//called in read_uncompressed_header() in decodeframe.c
 static INLINE int frame_is_sframe(const AV1_COMMON *cm) {
   return cm->frame_type == S_FRAME;
 }
-
+//called in read_uncompressed_header() in decodeframe.c
 static INLINE RefCntBuffer *get_prev_frame(const AV1_COMMON *const cm) {
   if (cm->primary_ref_frame == PRIMARY_REF_NONE ||
       cm->frame_refs[cm->primary_ref_frame].idx == INVALID_IDX) {
@@ -640,14 +640,16 @@ static INLINE RefCntBuffer *get_prev_frame(const AV1_COMMON *const cm) {
 }
 
 // Returns 1 if this frame might allow mvs from some reference frame.
+//called in read_uncompressed_header() in decodeframe.c
 static INLINE int frame_might_allow_ref_frame_mvs(const AV1_COMMON *cm) {
   return !cm->error_resilient_mode && cm->seq_params.enable_ref_frame_mvs &&
          cm->seq_params.enable_order_hint && !frame_is_intra_only(cm);
 }
 
 // Returns 1 if this frame might use warped_motion
+//called in read_uncompressed_header() in decodeframe.c
 static INLINE int frame_might_allow_warped_motion(const AV1_COMMON *cm) {
-  return !cm->error_resilient_mode && !frame_is_intra_only(cm) &&
+  return !cm->error_resilient_mode && !frame_is_intra_only(cm) &&   //onyxc_int.h
          cm->seq_params.enable_warped_motion;
 }
 //called in resize_context_buffers() in decodeframe.c
@@ -683,7 +685,7 @@ static INLINE void ensure_mv_buffer(RefCntBuffer *buf, AV1_COMMON *cm) {
 }
 
 void cfl_init(CFL_CTX *cfl, const SequenceHeader *seq_params);
-
+//called in read_uncompressed_header() in decodeframe.c
 static INLINE int av1_num_planes(const AV1_COMMON *cm) {
   return cm->seq_params.monochrome ? 1 : MAX_MB_PLANE;
 }
@@ -725,7 +727,7 @@ static INLINE void av1_init_macroblockd(AV1_COMMON *cm, MACROBLOCKD *xd,
   }
   xd->mi_stride = cm->mi_stride;
   xd->error_info = &cm->error;
-  cfl_init(&xd->cfl, &cm->seq_params);
+  //cfl_init(&xd->cfl, &cm->seq_params); //removed
 }
 
 static INLINE void set_skip_context(MACROBLOCKD *xd, int mi_row, int mi_col,
@@ -1303,6 +1305,7 @@ static INLINE void set_sb_size(SequenceHeader *const seq_params,
 // Returns true if the frame is fully lossless at the coded resolution.
 // Note: If super-resolution is used, such a frame will still NOT be lossless at
 // the upscaled resolution.
+//called in read_uncompressed_header() in decodeframe.c
 static INLINE int is_coded_lossless(const AV1_COMMON *cm,
                                     const MACROBLOCKD *xd) {
   int coded_lossless = 1;

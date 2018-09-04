@@ -34,6 +34,7 @@ typedef struct position {
 // clamp_mv_ref
 #define MV_BORDER (16 << 3)  // Allow 16 pels in 1/8th pel units
 
+// called in av1_setup_frame_sign_bias()
 static INLINE int get_relative_dist(const AV1_COMMON *cm, int a, int b) {
   if (!cm->seq_params.enable_order_hint) return 0;
 

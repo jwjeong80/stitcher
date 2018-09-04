@@ -15,7 +15,7 @@
 
 #include "config/av1_rtcd.h"
 #include "config/aom_dsp_rtcd.h"
-#include "config/aom_scale_rtcd.h"
+//#include "config/aom_scale_rtcd.h"
 
 #include "aom_mem/aom_mem.h"
 #include "aom_ports/system_state.h"
@@ -33,15 +33,15 @@
 
 #include "av1/decoder/decodeframe.h"
 #include "av1/decoder/decoder.h"
-#include "av1/decoder/detokenize.h"
+//#include "av1/decoder/detokenize.h"
 #include "av1/decoder/obu.h"
 
 static void initialize_dec(void) {
-  av1_rtcd();
-  aom_dsp_rtcd();
-  aom_scale_rtcd();
-  av1_init_intra_predictors();
-  av1_init_wedge_masks();
+  //av1_rtcd(); //removed
+ // aom_dsp_rtcd(); //removed
+  //aom_scale_rtcd(); //removed
+  //av1_init_intra_predictors(); //removed
+  //av1_init_wedge_masks(); //removed
 }
 
 static void dec_setup_mi(AV1_COMMON *cm) {
@@ -114,7 +114,7 @@ AV1Decoder *av1_decoder_create(BufferPool *const pool) {
   cm->free_mi = dec_free_mi;
   cm->setup_mi = dec_setup_mi;
 
-  av1_loop_filter_init(cm);
+  //av1_loop_filter_init(cm); //removed
 
   av1_qm_init(cm);
   av1_loop_restoration_precal();
@@ -247,8 +247,8 @@ aom_codec_err_t av1_copy_reference_dec(AV1Decoder *pbi, int idx,
   if (!equal_dimensions(cfg, sd))
     aom_internal_error(&cm->error, AOM_CODEC_ERROR,
                        "Incorrect buffer dimensions");
-  else
-    aom_yv12_copy_frame(cfg, sd, num_planes);
+  //else
+  //  aom_yv12_copy_frame(cfg, sd, num_planes); //removed
 
   return cm->error.error_code;
 }
@@ -283,7 +283,7 @@ aom_codec_err_t av1_set_reference_dec(AV1_COMMON *cm, int idx,
                          "Incorrect buffer dimensions");
     } else {
       // Overwrite the reference frame buffer.
-      aom_yv12_copy_frame(sd, ref_buf, num_planes);
+      //aom_yv12_copy_frame(sd, ref_buf, num_planes); //removed
     }
   } else {
     if (!equal_dimensions_and_border(ref_buf, sd)) {
@@ -314,8 +314,8 @@ aom_codec_err_t av1_copy_new_frame_dec(AV1_COMMON *cm,
   if (!equal_dimensions_and_border(new_frame, sd))
     aom_internal_error(&cm->error, AOM_CODEC_ERROR,
                        "Incorrect buffer dimensions");
-  else
-    aom_yv12_copy_frame(new_frame, sd, num_planes);
+  //else
+  //  aom_yv12_copy_frame(new_frame, sd, num_planes); //removed
 
   return cm->error.error_code;
 }
@@ -491,7 +491,7 @@ int av1_receive_compressed_data(AV1Decoder *pbi, size_t size,
     decrease_ref_count(cm->new_fb_idx, frame_bufs, pool);
     unlock_buffer_pool(pool);
 
-    aom_clear_system_state();
+    //aom_clear_system_state(); //removed
     return -1;
   }
 
@@ -530,7 +530,7 @@ int av1_receive_compressed_data(AV1Decoder *pbi, size_t size,
     return 1;
   }
 
-  aom_clear_system_state();
+  //aom_clear_system_state(); //removed
 
   if (!cm->show_existing_frame) {
     cm->last_show_frame = cm->show_frame;
@@ -563,7 +563,7 @@ int av1_get_raw_frame(AV1Decoder *pbi, size_t index, YV12_BUFFER_CONFIG **sd,
   if (index >= pbi->num_output_frames) return -1;
   *sd = pbi->output_frames[index];
   *grain_params = &frame_bufs[pbi->output_frame_index[index]].film_grain_params;
-  aom_clear_system_state();
+  //aom_clear_system_state(); //removed
   return 0;
 }
 

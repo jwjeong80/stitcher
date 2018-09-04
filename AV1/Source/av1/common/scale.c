@@ -63,6 +63,7 @@ MV32 av1_scale_mv(const MV *mvq4, int x, int y,
   return res;
 }
 
+// called in read_uncompressed_header() in decodeframe.c
 void av1_setup_scale_factors_for_frame(struct scale_factors *sf, int other_w,
                                        int other_h, int this_w, int this_h) {
   if (!valid_ref_frame_size(other_w, other_h, this_w, this_h)) {
@@ -89,6 +90,7 @@ void av1_setup_scale_factors_for_frame(struct scale_factors *sf, int other_w,
   // Special case convolve functions should produce the same result as
   // av1_convolve_2d.
   // subpel_x_q4 == 0 && subpel_y_q4 == 0
+  /* //removed
   sf->convolve[0][0][0] = av1_convolve_2d_copy_sr;
   // subpel_x_q4 == 0
   sf->convolve[0][1][0] = av1_convolve_y_sr;
@@ -123,4 +125,5 @@ void av1_setup_scale_factors_for_frame(struct scale_factors *sf, int other_w,
   sf->highbd_convolve[1][0][1] = av1_highbd_jnt_convolve_x;
   // subpel_x_q4 != 0 && subpel_y_q4 != 0
   sf->highbd_convolve[1][1][1] = av1_highbd_jnt_convolve_2d;
+  */
 }

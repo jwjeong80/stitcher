@@ -859,6 +859,7 @@ void av1_find_best_ref_mvs(int allow_hp, int_mv *mvlist, int_mv *nearest_mv,
   *near_mv = mvlist[1];
 }
 
+// called in read_uncompressed_header() in decodeframe.c
 void av1_setup_frame_buf_refs(AV1_COMMON *cm) {
   cm->cur_frame->cur_frame_offset = cm->frame_offset;
 
@@ -870,7 +871,7 @@ void av1_setup_frame_buf_refs(AV1_COMMON *cm) {
           cm->buffer_pool->frame_bufs[buf_idx].cur_frame_offset;
   }
 }
-
+// called in read_uncompressed_header() in decodeframe.c
 void av1_setup_frame_sign_bias(AV1_COMMON *cm) {
   MV_REFERENCE_FRAME ref_frame;
   for (ref_frame = LAST_FRAME; ref_frame <= ALTREF_FRAME; ++ref_frame) {
@@ -879,7 +880,7 @@ void av1_setup_frame_sign_bias(AV1_COMMON *cm) {
       const int ref_frame_offset =
           cm->buffer_pool->frame_bufs[buf_idx].cur_frame_offset;
       cm->ref_frame_sign_bias[ref_frame] =
-          (get_relative_dist(cm, ref_frame_offset, (int)cm->frame_offset) <= 0)
+          (get_relative_dist(cm, ref_frame_offset, (int)cm->frame_offset) <= 0) //mvref_common.h
               ? 0
               : 1;
     } else {
@@ -1255,12 +1256,12 @@ int findSamples(const AV1_COMMON *cm, MACROBLOCKD *xd, int mi_row, int mi_col,
 
   return np;
 }
-
+//called in read_uncompressed_header() in decodeframe.c
 void av1_setup_skip_mode_allowed(AV1_COMMON *cm) {
   cm->is_skip_mode_allowed = 0;
   cm->ref_frame_idx_0 = cm->ref_frame_idx_1 = INVALID_IDX;
 
-  if (!cm->seq_params.enable_order_hint || frame_is_intra_only(cm) ||
+  if (!cm->seq_params.enable_order_hint || frame_is_intra_only(cm) || //frame_is_intra_only() : onyxc_int.h
       cm->reference_mode == SINGLE_REFERENCE)
     return;
 

@@ -43,8 +43,10 @@
  */
 #ifndef AOM_INTERNAL_AOM_CODEC_INTERNAL_H_
 #define AOM_INTERNAL_AOM_CODEC_INTERNAL_H_
-#include "../aom_decoder.h"
-#include "../aom_encoder.h"
+//#include "../aom_decoder.h"
+//#include "../aom_encoder.h"
+#include "aom/aom_decoder.h"
+#include "aom/aom_encoder.h"
 #include <stdarg.h>
 
 #ifdef __cplusplus
