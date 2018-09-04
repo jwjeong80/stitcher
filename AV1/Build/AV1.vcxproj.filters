@@ -13,10 +13,354 @@
       <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
       <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
     </Filter>
+    <Filter Include="aom">
+      <UniqueIdentifier>{34c704c0-22ce-40e7-82d3-d446bdbb52d6}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="aom_av1_decoder">
+      <UniqueIdentifier>{421868a0-5817-4d28-824e-4947cbca348d}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="aom_av1_common">
+      <UniqueIdentifier>{037674ca-1874-498e-9ffa-71c4d06bd1a5}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="aom_dsp">
+      <UniqueIdentifier>{01ef81cd-0b3f-41ec-b39b-2aaab0a05eb8}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="aom_ports">
+      <UniqueIdentifier>{c4ce7174-1d15-4859-a833-15b557b1c9b0}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="aom_scale">
+      <UniqueIdentifier>{58e661ce-ae6a-420e-a9d5-73cc52769e52}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="aom_mem">
+      <UniqueIdentifier>{d82169eb-1e63-440e-b5b6-ef5171a646c5}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="aom_util">
+      <UniqueIdentifier>{6d9d188b-7ad7-4d2b-9cc2-734ab31a1a8c}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="aom_av1_encoder">
+      <UniqueIdentifier>{ab86ebe9-fbfe-4531-bf1a-47f8ac37fd12}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="third_party">
+      <UniqueIdentifier>{1c840ea7-163f-4ac1-91c1-99b5310c2918}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="..\Source\main.cpp">
+    <ClCompile Include="..\Source\av1\common\timing.c">
+      <Filter>aom_av1_common</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Source\aom_dsp\bitreader_buffer.c">
+      <Filter>aom_dsp</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Source\av1\decoder\decodeframe.c">
+      <Filter>aom_av1_decoder</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Source\av1\decoder\decoder.c">
+      <Filter>aom_av1_decoder</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Source\av1\decoder\obu.c">
+      <Filter>aom_av1_decoder</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Source\aom\src\aom_integer.c">
+      <Filter>aom</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Source\aom\src\aom_codec.c">
+      <Filter>aom</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Source\aom_scale\generic\yv12config.c">
+      <Filter>aom_scale</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Source\av1\common\mvref_common.c">
+      <Filter>aom_av1_common</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Source\av1\common\alloccommon.c">
+      <Filter>aom_av1_common</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Source\av1\common\scale.c">
+      <Filter>aom_av1_common</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Source\av1\common\quant_common.c">
+      <Filter>aom_av1_common</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Source\av1\common\entropymode.c">
+      <Filter>aom_av1_common</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Source\av1\common\seg_common.c">
+      <Filter>aom_av1_common</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Source\av1\common\blockd.c">
+      <Filter>aom_av1_common</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Source\aom_dsp\binary_codes_reader.c">
+      <Filter>aom_dsp</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Source\av1\common\warped_motion.c">
+      <Filter>aom_av1_common</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Source\av1\common\tile_common.c">
+      <Filter>aom_av1_common</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Source\aom_mem\aom_mem.c">
+      <Filter>aom_mem</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Source\aom_dsp\daalaboolreader.c">
+      <Filter>aom_dsp</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Source\aom_util\aom_thread.c">
+      <Filter>aom_util</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Source\av1\common\odintrin.c">
+      <Filter>aom_av1_common</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Source\third_party\vector\vector.c">
+      <Filter>third_party</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Source\aom_dsp\entdec.c">
+      <Filter>aom_dsp</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Source\aom_dsp\entcode.c">
+      <Filter>aom_dsp</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Source\av1\common\restoration.c">
+      <Filter>aom_av1_common</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Source\av1\common\resize.c">
+      <Filter>aom_av1_common</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Source\av1\common\entropy.c">
+      <Filter>aom_av1_common</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Source\av1\common\thread_common.c">
+      <Filter>aom_av1_common</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Source\av1\common\entropymv.c">
+      <Filter>aom_av1_common</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Source\av1\common\txb_common.c">
+      <Filter>aom_av1_common</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Source\aom_scale\generic\yv12extend.c">
+      <Filter>aom_scale</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Source\main.c">
       <Filter>소스 파일</Filter>
     </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\Source\aom\aom_codec.h">
+      <Filter>aom</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\aom\aom_integer.h">
+      <Filter>aom</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\av1\common\common.h">
+      <Filter>aom_av1_common</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\av1\common\timing.h">
+      <Filter>aom_av1_common</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\aom_dsp\bitreader_buffer.h">
+      <Filter>aom_dsp</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\av1\decoder\decodeframe.h">
+      <Filter>aom_av1_decoder</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\av1\decoder\decoder.h">
+      <Filter>aom_av1_decoder</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\av1\decoder\obu.h">
+      <Filter>aom_av1_decoder</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\aom_ports\mem_ops.h">
+      <Filter>aom_ports</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\av1\common\onyxc_int.h">
+      <Filter>aom_av1_common</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\av1\common\enums.h">
+      <Filter>aom_av1_common</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\aom\aom_image.h">
+      <Filter>aom</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\aom\internal\aom_codec_internal.h">
+      <Filter>aom</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\aom_scale\yv12config.h">
+      <Filter>aom_scale</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\av1\common\mvref_common.h">
+      <Filter>aom_av1_common</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\av1\common\blockd.h">
+      <Filter>aom_av1_common</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\av1\common\alloccommon.h">
+      <Filter>aom_av1_common</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\av1\common\filter.h">
+      <Filter>aom_av1_common</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\av1\common\scale.h">
+      <Filter>aom_av1_common</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\av1\common\quant_common.h">
+      <Filter>aom_av1_common</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\av1\common\entropymode.h">
+      <Filter>aom_av1_common</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\av1\common\seg_common.h">
+      <Filter>aom_av1_common</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\aom_dsp\aom_dsp_common.h">
+      <Filter>aom_dsp</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\av1\common\restoration.h">
+      <Filter>aom_av1_common</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\av1\common\warped_motion.h">
+      <Filter>aom_av1_common</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\av1\common\mv.h">
+      <Filter>aom_av1_common</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\aom_dsp\binary_codes_reader.h">
+      <Filter>aom_dsp</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\aom_dsp\bitreader.h">
+      <Filter>aom_dsp</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\aom_ports\mem.h">
+      <Filter>aom_ports</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\av1\common\av1_loopfilter.h">
+      <Filter>aom_av1_common</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\av1\common\tile_common.h">
+      <Filter>aom_av1_common</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\aom_ports\mem_ops_aligned.h">
+      <Filter>aom_ports</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\aom_mem\aom_mem.h">
+      <Filter>aom_mem</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\aom_mem\include\aom_mem_intrnl.h">
+      <Filter>aom_mem</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\aom_ports\bitops.h">
+      <Filter>aom_ports</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\aom_ports\msvc.h">
+      <Filter>aom_ports</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\aom\aomdx.h">
+      <Filter>aom</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\aom_dsp\daalaboolreader.h">
+      <Filter>aom_dsp</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\aom\aom.h">
+      <Filter>aom</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\aom_ports\aom_timer.h">
+      <Filter>aom_ports</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\aom_scale\aom_scale.h">
+      <Filter>aom_scale</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\aom_util\aom_thread.h">
+      <Filter>aom_util</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\av1\common\cfl.h">
+      <Filter>aom_av1_common</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\av1\common\entropy.h">
+      <Filter>aom_av1_common</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\av1\common\entropymv.h">
+      <Filter>aom_av1_common</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\av1\common\thread_common.h">
+      <Filter>aom_av1_common</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\aom_dsp\entcode.h">
+      <Filter>aom_dsp</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\aom_dsp\entdec.h">
+      <Filter>aom_dsp</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\aom_dsp\prob.h">
+      <Filter>aom_dsp</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\av1\common\odintrin.h">
+      <Filter>aom_av1_common</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\aom\aom_frame_buffer.h">
+      <Filter>aom</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\av1\common\common_data.h">
+      <Filter>aom_av1_common</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\aom_dsp\aom_filter.h">
+      <Filter>aom_dsp</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\av1\common\convolve.h">
+      <Filter>aom_av1_common</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\av1\common\cdef_block.h">
+      <Filter>aom_av1_common</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\av1\common\frame_buffers.h">
+      <Filter>aom_av1_common</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\aom_dsp\grain_synthesis.h">
+      <Filter>aom_dsp</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\aom_dsp\grain_table.h">
+      <Filter>aom_dsp</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\av1\encoder\hash_motion.h">
+      <Filter>aom_av1_encoder</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\third_party\vector\vector.h">
+      <Filter>third_party</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\av1\decoder\dthread.h">
+      <Filter>aom_av1_decoder</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\aom_dsp\txfm_common.h">
+      <Filter>aom_dsp</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\av1\common\av1_txfm.h">
+      <Filter>aom_av1_common</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\av1\common\reconintra.h">
+      <Filter>aom_av1_common</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\av1\common\reconinter.h">
+      <Filter>aom_av1_common</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\av1\common\scan.h">
+      <Filter>aom_av1_common</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\av1\common\txb_common.h">
+      <Filter>aom_av1_common</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\aom_ports\system_state.h">
+      <Filter>aom_ports</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\aom_ports\aom_once.h">
+      <Filter>aom_ports</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\aom_ports\x86.h">
+      <Filter>aom_ports</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\av1\common\token_cdfs.h">
+      <Filter>aom_av1_common</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Source\av1\common\resize.h">
+      <Filter>aom_av1_common</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

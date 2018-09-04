@@ -19,7 +19,113 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="..\Source\main.cpp" />
+    <ClCompile Include="..\Source\aom\src\aom_codec.c" />
+    <ClCompile Include="..\Source\aom\src\aom_integer.c" />
+    <ClCompile Include="..\Source\aom_dsp\binary_codes_reader.c" />
+    <ClCompile Include="..\Source\aom_dsp\bitreader_buffer.c" />
+    <ClCompile Include="..\Source\aom_dsp\daalaboolreader.c" />
+    <ClCompile Include="..\Source\aom_dsp\entcode.c" />
+    <ClCompile Include="..\Source\aom_dsp\entdec.c" />
+    <ClCompile Include="..\Source\aom_mem\aom_mem.c" />
+    <ClCompile Include="..\Source\aom_scale\generic\yv12config.c" />
+    <ClCompile Include="..\Source\aom_scale\generic\yv12extend.c" />
+    <ClCompile Include="..\Source\aom_util\aom_thread.c" />
+    <ClCompile Include="..\Source\av1\common\alloccommon.c" />
+    <ClCompile Include="..\Source\av1\common\blockd.c" />
+    <ClCompile Include="..\Source\av1\common\entropy.c" />
+    <ClCompile Include="..\Source\av1\common\entropymode.c" />
+    <ClCompile Include="..\Source\av1\common\entropymv.c" />
+    <ClCompile Include="..\Source\av1\common\mvref_common.c" />
+    <ClCompile Include="..\Source\av1\common\odintrin.c" />
+    <ClCompile Include="..\Source\av1\common\quant_common.c" />
+    <ClCompile Include="..\Source\av1\common\resize.c" />
+    <ClCompile Include="..\Source\av1\common\restoration.c" />
+    <ClCompile Include="..\Source\av1\common\scale.c" />
+    <ClCompile Include="..\Source\av1\common\seg_common.c" />
+    <ClCompile Include="..\Source\av1\common\thread_common.c" />
+    <ClCompile Include="..\Source\av1\common\tile_common.c" />
+    <ClCompile Include="..\Source\av1\common\timing.c" />
+    <ClCompile Include="..\Source\av1\common\txb_common.c" />
+    <ClCompile Include="..\Source\av1\common\warped_motion.c" />
+    <ClCompile Include="..\Source\av1\decoder\decodeframe.c" />
+    <ClCompile Include="..\Source\av1\decoder\decoder.c" />
+    <ClCompile Include="..\Source\av1\decoder\obu.c" />
+    <ClCompile Include="..\Source\main.c" />
+    <ClCompile Include="..\Source\third_party\vector\vector.c" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\Source\aom\aom.h" />
+    <ClInclude Include="..\Source\aom\aomdx.h" />
+    <ClInclude Include="..\Source\aom\aom_codec.h" />
+    <ClInclude Include="..\Source\aom\aom_frame_buffer.h" />
+    <ClInclude Include="..\Source\aom\aom_image.h" />
+    <ClInclude Include="..\Source\aom\aom_integer.h" />
+    <ClInclude Include="..\Source\aom\internal\aom_codec_internal.h" />
+    <ClInclude Include="..\Source\aom_dsp\aom_dsp_common.h" />
+    <ClInclude Include="..\Source\aom_dsp\aom_filter.h" />
+    <ClInclude Include="..\Source\aom_dsp\binary_codes_reader.h" />
+    <ClInclude Include="..\Source\aom_dsp\bitreader.h" />
+    <ClInclude Include="..\Source\aom_dsp\bitreader_buffer.h" />
+    <ClInclude Include="..\Source\aom_dsp\daalaboolreader.h" />
+    <ClInclude Include="..\Source\aom_dsp\entcode.h" />
+    <ClInclude Include="..\Source\aom_dsp\entdec.h" />
+    <ClInclude Include="..\Source\aom_dsp\grain_synthesis.h" />
+    <ClInclude Include="..\Source\aom_dsp\grain_table.h" />
+    <ClInclude Include="..\Source\aom_dsp\prob.h" />
+    <ClInclude Include="..\Source\aom_dsp\txfm_common.h" />
+    <ClInclude Include="..\Source\aom_mem\aom_mem.h" />
+    <ClInclude Include="..\Source\aom_mem\include\aom_mem_intrnl.h" />
+    <ClInclude Include="..\Source\aom_ports\aom_once.h" />
+    <ClInclude Include="..\Source\aom_ports\aom_timer.h" />
+    <ClInclude Include="..\Source\aom_ports\bitops.h" />
+    <ClInclude Include="..\Source\aom_ports\mem.h" />
+    <ClInclude Include="..\Source\aom_ports\mem_ops.h" />
+    <ClInclude Include="..\Source\aom_ports\mem_ops_aligned.h" />
+    <ClInclude Include="..\Source\aom_ports\msvc.h" />
+    <ClInclude Include="..\Source\aom_ports\system_state.h" />
+    <ClInclude Include="..\Source\aom_ports\x86.h" />
+    <ClInclude Include="..\Source\aom_scale\aom_scale.h" />
+    <ClInclude Include="..\Source\aom_scale\yv12config.h" />
+    <ClInclude Include="..\Source\aom_util\aom_thread.h" />
+    <ClInclude Include="..\Source\av1\common\alloccommon.h" />
+    <ClInclude Include="..\Source\av1\common\av1_loopfilter.h" />
+    <ClInclude Include="..\Source\av1\common\av1_txfm.h" />
+    <ClInclude Include="..\Source\av1\common\blockd.h" />
+    <ClInclude Include="..\Source\av1\common\cdef_block.h" />
+    <ClInclude Include="..\Source\av1\common\cfl.h" />
+    <ClInclude Include="..\Source\av1\common\common.h" />
+    <ClInclude Include="..\Source\av1\common\common_data.h" />
+    <ClInclude Include="..\Source\av1\common\convolve.h" />
+    <ClInclude Include="..\Source\av1\common\entropy.h" />
+    <ClInclude Include="..\Source\av1\common\entropymode.h" />
+    <ClInclude Include="..\Source\av1\common\entropymv.h" />
+    <ClInclude Include="..\Source\av1\common\enums.h" />
+    <ClInclude Include="..\Source\av1\common\filter.h" />
+    <ClInclude Include="..\Source\av1\common\frame_buffers.h" />
+    <ClInclude Include="..\Source\av1\common\mv.h" />
+    <ClInclude Include="..\Source\av1\common\mvref_common.h" />
+    <ClInclude Include="..\Source\av1\common\odintrin.h" />
+    <ClInclude Include="..\Source\av1\common\onyxc_int.h" />
+    <ClInclude Include="..\Source\av1\common\quant_common.h" />
+    <ClInclude Include="..\Source\av1\common\reconinter.h" />
+    <ClInclude Include="..\Source\av1\common\reconintra.h" />
+    <ClInclude Include="..\Source\av1\common\resize.h" />
+    <ClInclude Include="..\Source\av1\common\restoration.h" />
+    <ClInclude Include="..\Source\av1\common\scale.h" />
+    <ClInclude Include="..\Source\av1\common\scan.h" />
+    <ClInclude Include="..\Source\av1\common\seg_common.h" />
+    <ClInclude Include="..\Source\av1\common\thread_common.h" />
+    <ClInclude Include="..\Source\av1\common\tile_common.h" />
+    <ClInclude Include="..\Source\av1\common\timing.h" />
+    <ClInclude Include="..\Source\av1\common\token_cdfs.h" />
+    <ClInclude Include="..\Source\av1\common\txb_common.h" />
+    <ClInclude Include="..\Source\av1\common\warped_motion.h" />
+    <ClInclude Include="..\Source\av1\decoder\decodeframe.h" />
+    <ClInclude Include="..\Source\av1\decoder\decoder.h" />
+    <ClInclude Include="..\Source\av1\decoder\dthread.h" />
+    <ClInclude Include="..\Source\av1\decoder\obu.h" />
+    <ClInclude Include="..\Source\av1\encoder\hash_motion.h" />
+    <ClInclude Include="..\Source\third_party\vector\vector.h" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>15.0</VCProjectVersion>
@@ -45,7 +151,7 @@
     <ConfigurationType>Application</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
     <PlatformToolset>v141</PlatformToolset>
-    <CharacterSet>MultiByte</CharacterSet>
+    <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
@@ -87,6 +193,7 @@
       <Optimization>Disabled</Optimization>
       <SDLCheck>true</SDLCheck>
       <ConformanceMode>true</ConformanceMode>
+      <AdditionalIncludeDirectories>E:\Project\AV1\av1_stitcher\AV1\Source\aom_build;E:\Project\AV1\av1_stitcher\AV1\Source;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
@@ -111,6 +218,7 @@
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <SDLCheck>true</SDLCheck>
       <ConformanceMode>true</ConformanceMode>
+      <AdditionalIncludeDirectories>E:\Project\AV1\av1_stitcher\AV1\Source\aom_build;E:\Project\AV1\av1_stitcher\AV1\Source;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
