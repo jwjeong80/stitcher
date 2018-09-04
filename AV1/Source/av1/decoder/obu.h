@@ -15,6 +15,10 @@
 #include "aom/aom_codec.h"
 #include "av1/decoder/decoder.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 typedef struct {
   size_t size;  // Size (1 or 2 bytes) of the OBU header (including the
                 // optional OBU extension header) in the bitstream.
@@ -50,5 +54,10 @@ int aom_decode_frame_from_obus(struct AV1Decoder *pbi, const uint8_t *data,
 aom_codec_err_t aom_get_num_layers_from_operating_point_idc(
     int operating_point_idc, unsigned int *num_spatial_layers,
     unsigned int *num_temporal_layers);
+
+#ifdef __cplusplus
+}  // extern "C"
+#endif
+
 
 #endif
