@@ -141,9 +141,6 @@
     <ClCompile Include="..\Source\aom_scale\generic\yv12extend.c">
       <Filter>aom_scale</Filter>
     </ClCompile>
-    <ClCompile Include="..\Source\main.c">
-      <Filter>소스 파일</Filter>
-    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\Source\aom\aom_codec.h">
