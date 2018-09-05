@@ -15,48 +15,24 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="test.cpp">
+    <ClCompile Include="main.cpp">
       <Filter>소스 파일</Filter>
     </ClCompile>
-    <ClCompile Include="AV1StitcherApi.cpp">
+    <ClCompile Include="Etimer.cpp">
       <Filter>소스 파일</Filter>
     </ClCompile>
-    <ClCompile Include="AV1BStrStitcher.cpp">
-      <Filter>소스 파일</Filter>
-    </ClCompile>
-    <ClCompile Include="OBUParser.cpp">
-      <Filter>소스 파일</Filter>
-    </ClCompile>
-    <ClCompile Include="AV1File.cpp">
+    <ClCompile Include="..\aom_stitcher_lib\AV1File.cpp">
       <Filter>소스 파일</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="AV1StitcherApi.h">
+    <ClInclude Include="Etimer.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
-    <ClInclude Include="stdafx.h">
+    <ClInclude Include="..\aom_stitcher_lib\AV1File.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
-    <ClInclude Include="AV1BStrStitcher.h">
-      <Filter>헤더 파일</Filter>
-    </ClInclude>
-    <ClInclude Include="OBUParser.h">
-      <Filter>헤더 파일</Filter>
-    </ClInclude>
-    <ClInclude Include="CommonDef.h">
-      <Filter>헤더 파일</Filter>
-    </ClInclude>
-    <ClInclude Include="targetver.h">
-      <Filter>헤더 파일</Filter>
-    </ClInclude>
-    <ClInclude Include="TypeDef.h">
-      <Filter>헤더 파일</Filter>
-    </ClInclude>
-    <ClInclude Include="AV1File.h">
-      <Filter>헤더 파일</Filter>
-    </ClInclude>
-    <ClInclude Include="Define.h">
+    <ClInclude Include="..\aom_stitcher_lib\AV1StitcherApi.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
   </ItemGroup>

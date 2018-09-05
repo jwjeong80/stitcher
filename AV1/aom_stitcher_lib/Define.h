@@ -12,7 +12,6 @@
 
 #pragma once
 
-
 // definitions
 #define MAX_BIT_SIZE    (1024*1024)
 #define MAX_STREAMS     (440) /* 20x22 */

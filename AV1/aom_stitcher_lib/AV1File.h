@@ -96,8 +96,8 @@ public:
 	static int AomRbReadBit(struct aom_read_bit_buffer *rb);
 	static int AomRbReadLiteral(struct aom_read_bit_buffer *rb, int bits);
 
-	int64_t		getPosition();
-	bool		setPosition(int64_t iPos);
+	//int64_t		getPosition();
+	//bool		setPosition(int64_t iPos);
 
 private:
 

@@ -20,8 +20,8 @@
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>15.0</VCProjectVersion>
-    <ProjectGuid>{4DCE1FA4-84DF-4D00-8515-8DFFBC13D807}</ProjectGuid>
-    <RootNamespace>aomstitcherlib</RootNamespace>
+    <ProjectGuid>{25A53D96-E269-4CD2-9295-B7DEA054A049}</ProjectGuid>
+    <RootNamespace>aomstitchercli</RootNamespace>
     <WindowsTargetPlatformVersion>10.0.17134.0</WindowsTargetPlatformVersion>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
@@ -76,7 +76,7 @@
       <Optimization>Disabled</Optimization>
       <SDLCheck>true</SDLCheck>
       <ConformanceMode>false</ConformanceMode>
-      <AdditionalIncludeDirectories>E:\Project\AV1\av1_stitcher\AV1\Source\aom_build;E:\Project\AV1\av1_stitcher\AV1;E:\Project\AV1\av1_stitcher\AV1\Source;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>E:\Project\AV1\av1_stitcher\AV1\aom_stitcher_lib;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
@@ -116,22 +116,14 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="AV1BStrStitcher.cpp" />
-    <ClCompile Include="AV1File.cpp" />
-    <ClCompile Include="AV1StitcherApi.cpp" />
-    <ClCompile Include="OBUParser.cpp" />
-    <ClCompile Include="test.cpp" />
+    <ClCompile Include="..\aom_stitcher_lib\AV1File.cpp" />
+    <ClCompile Include="Etimer.cpp" />
+    <ClCompile Include="main.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="AV1BStrStitcher.h" />
-    <ClInclude Include="AV1File.h" />
-    <ClInclude Include="AV1StitcherApi.h" />
-    <ClInclude Include="CommonDef.h" />
-    <ClInclude Include="Define.h" />
-    <ClInclude Include="OBUParser.h" />
-    <ClInclude Include="stdafx.h" />
-    <ClInclude Include="targetver.h" />
-    <ClInclude Include="TypeDef.h" />
+    <ClInclude Include="..\aom_stitcher_lib\AV1File.h" />
+    <ClInclude Include="..\aom_stitcher_lib\AV1StitcherApi.h" />
+    <ClInclude Include="Etimer.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
