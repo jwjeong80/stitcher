@@ -928,6 +928,23 @@ eReturnStatusAV1 CAV1File::ExtractOBU(/*[in]*/uint8_t* pBuf, /*[in]*/uint32_t dw
 	return pOBU->uiNumOfOBU ? RET_TRUE_AV1 : RET_FALSE_AV1;
 }
 
+static int valid_obu_type(int obu_type) {
+	int valid_type = 0;
+	switch (obu_type) {
+	case OBU_SEQUENCE_HEADER:
+	case OBU_TEMPORAL_DELIMITER:
+	case OBU_FRAME_HEADER:
+	case OBU_TILE_GROUP:
+	case OBU_METADATA:
+	case OBU_FRAME:
+	case OBU_REDUNDANT_FRAME_HEADER:
+	case OBU_TILE_LIST:
+	case OBU_PADDING: valid_type = 1; break;
+	default: break;
+	}
+	return valid_type;
+}
+
 // Reads unsigned LEB128 integer and returns 0 upon successful read and decode.
 // Stores raw bytes in 'value_buffer', length of the number in 'value_length',
 // and decoded value in 'value'.
@@ -988,18 +1005,55 @@ int CAV1File::obudec_read_obu_header(FILE *f, size_t buffer_capacity,
 		}
 		++*bytes_read;
 	}
+	
+	obu_header->size = 1;
 
-	//size_t obu_bytes_parsed = 0;
+	int obu_forbidden_bit = (obu_data[0] & 0x80) >> 7;
 
-	//int		obu_forbidden_bit	= (pInputBuf[0] & 0x80) >> 7;		//  // Forbidden bit. Must not be set.
+	if (obu_forbidden_bit != 0)  // Forbidden bit. Must not be set.
+		return AOM_CODEC_CORRUPT_FRAME;
 
+	obu_header->type = (OBU_TYPE)((obu_data[0] & 0x78) >> 3);
+	if (!valid_obu_type(obu_header->type)) return AOM_CODEC_CORRUPT_FRAME;
 
-	//const aom_codec_err_t parse_result = aom_read_obu_header(
-	//	obu_data, *bytes_read, &obu_bytes_parsed, obu_header, is_annexb);
-	//if (parse_result != AOM_CODEC_OK || *bytes_read != obu_bytes_parsed) {
-	//	fprintf(stderr, "obudec: Error parsing OBU header.\n");
-	//	return -1;
-	//}
+	obu_header->has_extension = (obu_data[0] & 0x04) >> 2;
+	obu_header->has_size_field = (obu_data[0] & 0x02) >> 1;
+
+	if (!obu_header->has_size_field && !is_annexb) {
+		// section 5 obu streams must have obu_size field set.
+		return AOM_CODEC_UNSUP_BITSTREAM;
+	}
+
+	if ((obu_data[0] & 0x01) != 0)
+	{
+		// obu_reserved_1bit must be set to 0.
+		return AOM_CODEC_CORRUPT_FRAME;
+	}
+
+	//obu_data++;
+
+	if (obu_header->has_extension)
+	{
+		if (*bytes_read == 1) return AOM_CODEC_CORRUPT_FRAME;
+
+		obu_header->size += 1;
+		obu_header->temporal_layer_id = (obu_data[0] & 0xE0) >> 5;
+		obu_header->spatial_layer_id = (obu_data[0] & 0x18) >> 3;
+		int extension_header_reserved_3bits = (obu_data[0] & 0x07);
+
+		if (extension_header_reserved_3bits != 0)
+		{
+			// extension_header_reserved_3bits must be set to 0.
+			return AOM_CODEC_CORRUPT_FRAME;
+		}
+		//obu_data++;
+	}
+
+	if (*bytes_read != obu_header->size)
+	{
+		fprintf(stderr, "obudec: Error parsing OBU header.\n");
+		return -1;
+	}
 
 	return 0;
 }
@@ -1248,9 +1302,13 @@ int CAV1File::obudec_read_obu_payload(FILE *f, size_t payload_length,
 	return 0;
 }
 
-int CAV1File::obudec_read_temporal_unit(struct ObuDecInputContext *obu_ctx,
+//int CAV1File::obudec_read_temporal_unit(struct ObuDecInputContext *obu_ctx,//
+int CAV1File::obudec_read_temporal_unit(
 	uint8_t **buffer, size_t *bytes_read,
 	size_t *buffer_size) {
+		
+	struct ObuDecInputContext *obu_ctx = &m_OBUCtx;
+	
 	FILE *f = obu_ctx->avx_ctx.file;
 	if (!f) return -1;
 

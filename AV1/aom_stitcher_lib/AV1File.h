@@ -73,7 +73,8 @@ public:
 
 	bool OpenOBU(const char* rcFilename);
 
-	int obudec_read_temporal_unit(struct ObuDecInputContext *obu_ctx,
+	//int obudec_read_temporal_unit(struct ObuDecInputContext *obu_ctx,
+	int obudec_read_temporal_unit(
 		uint8_t **buffer, size_t *bytes_read,
 		size_t *buffer_size);
 	int obudec_read_leb128(FILE *f, uint8_t *value_buffer,
