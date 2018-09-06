@@ -252,9 +252,8 @@ uint32_t __stdcall OnBStrStitchProc(void* pThis)
 			size_t bytes_in_buffer = 0;
 			size_t buffer_size = 0;
 
-
 			//int ret = pAV1Files[i].file_is_obu();
-			pAV1Files[i].obudec_read_temporal_unit(&pInputBitBuffers[i], &bytes_in_buffer, &buffer_size);
+			//pAV1Files[i].obudec_read_temporal_unit(&pInputBitBuffers[i], &bytes_in_buffer, &buffer_size);
 			int ret = 1;
 
 			//int ret = pAV1Files[i].ExtractOBU(pInputBitBuffers[i], MAX_DEC_BUF, &pAV1OBU[i]); //각각의 stream에 대한 AU의 정보(AU 시작 위치, 크기, AU 객수) 를 출력
