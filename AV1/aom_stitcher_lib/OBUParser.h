@@ -87,7 +87,7 @@ public:
 	void                Create();
 	void                Destroy();
 
-	bool                DecodeOneOBU(uint8_t *pBuf, uint32_t uiBufSize);
+	bool                DecodeOneOBU(uint8_t *pBitStream, uint32_t uiBitstreamSize);
 
 	static aom_codec_err_t ReadObuHeader(struct aom_read_bit_buffer *rb,
 		int is_annexb, ObuHeader *header);
@@ -115,14 +115,6 @@ public:
 		const uint8_t *data,
 		const uint8_t **p_data_end,
 		int trailing_bits_present);
-	//static int32_t COBUParser::ReadTileGroupHeader(AV1Decoder *pbi,
-	//	struct aom_read_bit_buffer *rb,
-	//	int *start_tile, int *end_tile,
-	//	int tile_start_implicit);
-	//static uint32_t COBUParser::ReadOneTileGroupObu(
-	//	AV1Decoder *pbi, struct aom_read_bit_buffer *rb, int is_first_tg,
-	//	const uint8_t *data, const uint8_t *data_end, const uint8_t **p_data_end,
-	//	int *is_last_tg, int tile_start_implicit);
 	static void AllocTileListBuffer(AV1Decoder *pbi);
 	static void CopyDecodedTileToTileListBuffer(AV1Decoder *pbi,
 		uint8_t **output);
@@ -145,11 +137,6 @@ public:
 		size_t *const length_field_size);
 
 	static uint32_t ReadTemporalDelimiterObu() { return 0; }
-	//uint8_t*            FindStartCode2(uint8_t* pStart, uint8_t* pEnd);
-	//uint32_t            ExtractOneNALU(uint8_t* pBuf, uint32_t dwBufSize, Bool bLast);	// return : slice size, 0 => incomplete slice
-
-	//TComSlice*          GetSliceHeader() { return m_AuInfo.m_pSlicePilot; }
-	//TComInputBitstream* GetSliceSegData() { return &m_SliceSegData; }
 
 private:
 	//PsManager           m_PsManager;                // Parameter Set Manager
@@ -167,16 +154,7 @@ private:
 	//Bool                m_bFirstSliceInBitstream;   // 비트스트림 중간에 EOS를 포함할 수도 있는 전체 비트스트림
 
 protected:
-	//Bool                xParseNonVclNal(NALUnit& nalu, int iThreadIdx);
-	//Void                xParseVPS(TDecCavlc* pcCavlcDecoder, PsManager* pPsManager);
-	//Void                xParseSPS(TDecCavlc* pcCavlcDecoder, PsManager* pPsManager);
-	//Void                xParsePPS(TDecCavlc* pcCavlcDecoder, PsManager* pPsManager);
-	//Bool                xParseSliceHeader(CAuInfo* pAuInfo, TDecCavlc* pcCavlcDecoder, int bFirstSliceInPicture, int& bRapPicFlag);
-	//Bool                xParseSliceSegData(CAuInfo* pAuInfo, TComInputBitstream* pcBitstreamVector, int bFirstSliceInPicture, int bRapPicFlag, CSEIMessages* pSEIs);
 
-	//void                InferNoOutputPriorPicsFlag(bool bRapPicFlag, TComSlice* pcSlicePilot, CAuInfo* pAuInfo);
-	//Bool                isSkipPictureForBLA(NalUnitType associatedIRAPType, Int pocCRA, Int& iPOCLastDisplay, TComSlice* pcSlice);
-	//Bool                isRandomAccessSkipPicture(Int& pocRandomAccess, Int& iPOCLastDisplay, TComSlice* pcSlice);
 	bool ParseObuHeader(uint8_t obu_header_byte, ObuHeader *obu_header);
 	bool ParseObuExtensionHeader(uint8_t ext_header_byte, ObuHeader *obu_header);
 	//void PrintObuHeader(const ObuHeader *header);

@@ -14,6 +14,7 @@
 #include <stdlib.h>
 #include <stdint.h>
 
+#include <iostream>
 #include <process.h>    // C runtime thread
 #include <windows.h>
 
@@ -30,6 +31,7 @@
 #define MAX_DEC_BUF         (4*1024*1024)
 
 
+using namespace std;
 
 /* Ctrl-C handler */
 static volatile sig_atomic_t b_ctrl_c /* = 0 */;
@@ -244,6 +246,7 @@ uint32_t __stdcall OnBStrStitchProc(void* pThis)
 		}
 	}
 
+	int j = 0;
 	while (!b_ctrl_c)// && uiNumFrames < 5)
 	{
 		// extract access units from bitstreams
@@ -253,7 +256,7 @@ uint32_t __stdcall OnBStrStitchProc(void* pThis)
 			size_t buffer_size = 0;
 
 			//int ret = pAV1Files[i].file_is_obu();
-			pAV1Files[i].obudec_read_temporal_unit(&pInputBitBuffers[i], &bytes_in_buffer, &buffer_size);
+			pAV1Files[i].obudec_read_temporal_unit(&pInputBitBuffers[i], &bytes_in_buffer, &buffer_size, &pAV1OBU[i]);
 			int ret = 1;
 
 			//int ret = pAV1Files[i].ExtractOBU(pInputBitBuffers[i], MAX_DEC_BUF, &pAV1OBU[i]); //각각의 stream에 대한 AU의 정보(AU 시작 위치, 크기, AU 객수) 를 출력
@@ -268,10 +271,16 @@ uint32_t __stdcall OnBStrStitchProc(void* pThis)
 				goto PROC_END;
 			}
 
-			pAV1OBU[i].pEachOBU[0] = pInputBitBuffers[i];
-			pAV1OBU[i].uiEachOBUSize[0] = buffer_size;
-
-
+			pAV1OBU[i].pMemAddrOfOBU = pInputBitBuffers[i];
+			pAV1OBU[i].uiSizeOfOBUs = buffer_size;
+			
+			OBU_TYPE type = (OBU_TYPE)((pAV1OBU[i].pMemAddrOfOBU[0] & 0x78) >> 3);
+			cout << type << endl;
+			type = (OBU_TYPE)((pAV1OBU[i].pMemAddrOfOBU[2] & 0x78) >> 3);
+			cout << type << endl;
+			type = (OBU_TYPE)((pAV1OBU[i].pMemAddrOfOBU[15] & 0x78) >> 3);
+			cout << type << endl;
+			printf("frame border \n");
 
 			//if (pAV1OBU[i].uiNumOfOBU == 0)
 			//{
@@ -285,7 +294,7 @@ uint32_t __stdcall OnBStrStitchProc(void* pThis)
 		
 		// stitch all access units into single stream (HevcAuOut updated)
 		uiStitchFlags = (uiNumFrames) ? NO_INPUT_FLAGS_AV1 : WRITE_GLB_HDRS_AV1;
-		if (Keti_AV1_Stitcher_StitchSingleOBU(pcBStrStitcherHandle, &AV1OBUOut, pAV1OBU, uiStitchFlags))
+		if (Keti_AV1_Stitcher_StitchSingleOBU(pcBStrStitcherHandle, pAV1OBU, uiStitchFlags, &AV1OBUOut))
 		{
 			//uint32_t uiObuSize = 0;
 			//for (uint32_t i = 0; i < HevcAuOut.uiNumOfNALU; i++) {

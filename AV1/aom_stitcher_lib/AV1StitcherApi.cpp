@@ -46,7 +46,7 @@ extern "C" {
 		return 0;
 	}
 
-	STITCH_API int WINAPI Keti_AV1_Stitcher_StitchSingleOBU(void* pHandle, OBU *pOutOBUs, const OBU *pInpOBUs, uint32_t uiStitchFlags)
+	STITCH_API int WINAPI Keti_AV1_Stitcher_StitchSingleOBU(void* pHandle/*[in]*/, const OBU *pInpOBUs/*[in]*/, uint32_t uiStitchFlags, OBU *pOutOBUs/*[out]*/)
 	{
 		if (pHandle)
 		{
@@ -59,7 +59,7 @@ extern "C" {
 					return 0;
 				}
 			}
-			return pcAV1BStrStitcher->StitchSingleOBU(pOutOBUs, pInpOBUs, uiStitchFlags);
+			return pcAV1BStrStitcher->StitchSingleOBU(pInpOBUs, uiStitchFlags, pOutOBUs);
 		}
 
 		return 0;

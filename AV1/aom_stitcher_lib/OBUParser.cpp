@@ -843,92 +843,6 @@ bool COBUParser::ParseObuExtensionHeader(uint8_t ext_header_byte, ObuHeader *obu
 	return true;
 }
 
-//void COBUParser::PrintObuHeader(const ObuHeader *header) {
-//	printf(
-//		"  OBU type:        %s\n"
-//		"      extension:   %s\n",
-//		aom_obu_type_to_string(static_cast<OBU_TYPE>(header->type)),
-//		header->has_extension ? "yes" : "no");
-//	if (header->has_extension) {
-//		printf(
-//			"      temporal_id: %d\n"
-//			"      spatial_id:  %d\n",
-//			header->temporal_layer_id, header->temporal_layer_id);
-//	}
-//}
-//
-//bool COBUParser::DumpObu(const uint8_t *data, int length, int *obu_overhead_bytes) {
-//	const int kObuHeaderSizeBytes = 1;
-//	const int kMinimumBytesRequired = 1 + kObuHeaderSizeBytes;
-//	int consumed = 0;
-//	int obu_overhead = 0;
-//	ObuHeader obu_header;
-//	while (consumed < length) {
-//		const int remaining = length - consumed;
-//		if (remaining < kMinimumBytesRequired) {
-//			fprintf(stderr,
-//				"OBU parse error. Did not consume all data, %d bytes remain.\n",
-//				remaining);
-//			return false;
-//		}
-//
-//		int obu_header_size = 0;
-//
-//		memset(&obu_header, 0, sizeof(obu_header));
-//		const uint8_t obu_header_byte = *(data + consumed);
-//		if (!ParseObuHeader(obu_header_byte, &obu_header)) {
-//			fprintf(stderr, "OBU parsing failed at offset %d.\n", consumed);
-//			return false;
-//		}
-//
-//		++obu_overhead;
-//		++obu_header_size;
-//
-//		if (obu_header.has_extension) {
-//			const uint8_t obu_ext_header_byte =
-//				*(data + consumed + kObuHeaderSizeBytes);
-//			if (!ParseObuExtensionHeader(obu_ext_header_byte, &obu_header)) {
-//				fprintf(stderr, "OBU extension parsing failed at offset %d.\n",
-//					consumed + kObuHeaderSizeBytes);
-//				return false;
-//			}
-//
-//			++obu_overhead;
-//			++obu_header_size;
-//		}
-//
-//		PrintObuHeader(&obu_header);
-//
-//		uint64_t obu_size = 0;
-//		size_t length_field_size = 0;
-//		if (aom_uleb_decode(data + consumed + obu_header_size,
-//			remaining - obu_header_size, &obu_size,
-//			&length_field_size) != 0) {
-//			fprintf(stderr, "OBU size parsing failed at offset %d.\n",
-//				consumed + obu_header_size);
-//			return false;
-//		}
-//		int current_obu_length = static_cast<int>(obu_size);
-//		if (obu_header_size + static_cast<int>(length_field_size) +
-//			current_obu_length >
-//			remaining) {
-//			fprintf(stderr, "OBU parsing failed: not enough OBU data.\n");
-//			return false;
-//		}
-//		consumed += obu_header_size + static_cast<int>(length_field_size) +
-//			current_obu_length;
-//		printf("      length:      %d\n",
-//			static_cast<int>(obu_header_size + length_field_size +
-//				current_obu_length));
-//	}
-//
-//	if (obu_overhead_bytes != nullptr) *obu_overhead_bytes = obu_overhead;
-//	printf("  TU size: %d\n", consumed);
-//
-//	return true;
-//}
-
-
 // On success, returns a boolean that indicates whether the decoding of the
 // current frame is finished. On failure, sets cm->error.error_code and
 // returns -1.
@@ -1143,4 +1057,34 @@ int COBUParser::AomDecodeFrameFromObus(struct AV1Decoder *pbi, const uint8_t *da
 	}
 
 	return frame_decoding_finished;
+}
+
+
+
+bool COBUParser::DecodeOneOBU(uint8_t *pBitStream, uint32_t uiBitstreamSize)
+{
+	if (pBitStream != NULL && uiBitstreamSize != 0)
+	{
+		uint32_t uOBUSizeCount = 0;
+		while (uOBUSizeCount < uiBitstreamSize)
+		{
+			uint8_t* pPacketOBU = pBitStream + uOBUSizeCount;
+
+			//1. obu header and size extract
+
+			ObuHeader obu_header;
+			if (obu_header.type == OBU_TEMPORAL_DELIMITER)
+			{
+
+			}
+			else if (obu_header.type == SequenceHeader)
+			{
+
+			}
+			//2. 
+
+		}
+	}
+
+	return true;
 }

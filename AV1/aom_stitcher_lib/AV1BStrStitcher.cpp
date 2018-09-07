@@ -61,7 +61,7 @@ void CAV1BStrStitcher::Destroy()
 	//m_HevcWriter.Destroy();
 }
 
-int CAV1BStrStitcher::StitchSingleOBU(OBU *pOutOBUs, const OBU *pInpOBUs, uint32_t uiStitchFlags)
+int CAV1BStrStitcher::StitchSingleOBU(const OBU *pInpOBUs, uint32_t uiStitchFlags, OBU *pOutOBUs)
 {
 	uint8_t *pBitstream;
 	uint32_t uiBitstreamSize;
@@ -74,11 +74,16 @@ int CAV1BStrStitcher::StitchSingleOBU(OBU *pOutOBUs, const OBU *pInpOBUs, uint32
 	 //decode all OBUs
 	for (int i = 0; i < m_uiNumParsers; i++)
 	{
+		pBitstream = pInpOBUs[i].pMemAddrOfOBU;
+		uiBitstreamSize = pInpOBUs[i].uiSizeOfOBUs;
+
+		m_pOBUParser[i]->DecodeOneOBU(pBitstream, uiBitstreamSize);
+
 		//const uint8_t **ppSource = &pInpOBUs[i].pEachOBU[0];
 		//const uint8_t *pSource = *ppSource;
 
-		const uint8_t *pSource = pInpOBUs[i].pEachOBU[0];
-		const uint8_t **ppSource = &pSource;
+		//const uint8_t *pSource = pInpOBUs[i].pEachOBU[0];
+		//const uint8_t **ppSource = &pSource;
 
 		//aom_decode_frame_from_obus(&pbi, pSource, pSource + pInpOBUs[i].uiEachOBUSize[0], ppSource);
 		//aom_decode_frame_from_obus(&pbi, pInpOBUs[i].pEachOBU[0], pInpOBUs[i].pEachOBU[0] + pInpOBUs[i].uiEachOBUSize[0], &pInpOBUs[i].pEachOBU[0]);

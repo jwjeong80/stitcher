@@ -43,8 +43,8 @@
 struct OBU
 {
 	uint32_t    uiNumOfOBU;                    /* [in] */
-	uint8_t*    pEachOBU[MAX_OBU_NUM];            /* [in]; only pointer (continuous memory) */
-	uint32_t    uiEachOBUSize[MAX_OBU_NUM];       /* [in] */
+	uint8_t*    pMemAddrOfOBU;            /* [in]; only pointer (continuous memory) */
+	uint32_t    uiSizeOfOBUs;       /* [in] */
 };
 #endif // MAX_NALU_NUM
 
@@ -74,7 +74,7 @@ extern "C" {
 	[return]
 	- 0: failure,  1: success
 	*/
-	STITCH_API int WINAPI Keti_AV1_Stitcher_StitchSingleOBU(void* pHandle/*[in]*/, OBU *pOutOBUs/*[out]*/, const OBU *pInpOBUs/*[in]*/, uint32_t uiStitchFlags);
+	STITCH_API int WINAPI Keti_AV1_Stitcher_StitchSingleOBU(void* pHandle/*[in]*/, const OBU *pInpOBUs/*[in]*/, uint32_t uiStitchFlags, OBU *pOutOBUs/*[out]*/);
 	STITCH_API void WINAPI Keti_AV1_Stitcher_Destroy(void* pHandle/*[in]*/);
 
 #ifdef __cplusplus

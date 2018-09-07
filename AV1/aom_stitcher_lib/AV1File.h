@@ -12,8 +12,8 @@
 struct OBU
 {
 	uint32_t    uiNumOfOBU;                    /* [in] */
-	uint8_t*    pEachOBU[MAX_OBU_NUM];            /* [in]; only pointer (continuous memory) */
-	uint32_t    uiEachOBUSize[MAX_OBU_NUM];       /* [in] */
+	uint8_t*    pMemAddrOfOBU;            /* [in]; only pointer (continuous memory) */
+	uint32_t    uiSizeOfOBUs;       /* [in] */
 };
 #endif // MAX_NALU_NUM
 
@@ -76,7 +76,8 @@ public:
 	//int obudec_read_temporal_unit(struct ObuDecInputContext *obu_ctx,
 	int obudec_read_temporal_unit(
 		uint8_t **buffer, size_t *bytes_read,
-		size_t *buffer_size);
+		size_t *buffer_size,
+		OBU *pOBU);
 	int obudec_read_leb128(FILE *f, uint8_t *value_buffer,
 		size_t *value_length, uint64_t *value);
 	int obudec_read_one_obu(FILE *f, uint8_t **obu_buffer,
@@ -96,46 +97,7 @@ public:
 
 	eReturnStatusAV1 ExtractOBU(/*[in]*/uint8_t* pBuf, /*[in]*/uint32_t dwBufSize, /*[out]*/OBU* pOBU);
 
-	//int file_is_obu(struct ObuDecInputContext *obu_ctx);
-	//int file_is_obu(struct ObuDecInputContext *obu_ctx);
 	int file_is_obu(void);
-	//static aom_codec_err_t read_obu_header(struct aom_read_bit_buffer *rb,
-	//	int is_annexb, ObuHeader *header);
-	//int obudec_read_temporal_unit( uint8_t **buffer, size_t *bytes_read, size_t *buffer_size);
-
-
-
-	//int obudec_read_leb128(FILE *f, uint8_t *value_buffer,
-	//	size_t *value_length, uint64_t *value);
-	//int obudec_read_one_obu(FILE *f, uint8_t **obu_buffer,
-	//	size_t obu_bytes_buffered,
-	//	size_t *obu_buffer_capacity, size_t *obu_length,
-	//	ObuHeader *obu_header, int is_annexb);
-	//int obudec_read_obu_payload(FILE *f, size_t payload_length,
-	//	uint8_t *obu_data, size_t *bytes_read);
-	//int obudec_read_obu_header_and_size(FILE *f, size_t buffer_capacity,
-	//	int is_annexb, uint8_t *buffer,
-	//	size_t *bytes_read,
-	//	size_t *payload_length,
-	//	ObuHeader *obu_header);
-	//int obudec_read_obu_header(FILE *f, size_t buffer_capacity,
-	//	int is_annexb, uint8_t *obu_data,
-	//	ObuHeader *obu_header, size_t *bytes_read);
-
-	//aom_codec_err_t aom_read_obu_header(uint8_t *buffer, size_t buffer_length,
-	//	size_t *consumed, ObuHeader *header,
-	//	int is_annexb);
-
-	////uint32_t	ExtractPacket3(/*[in]*/uint8_t *pInputBuf, /*[in]*/uint32_t dwBufSize, /*[out]*/uint8_t** pBufStartPos, /*[out]*/uint32_t& uiOutBufSize);
-	////eReturnStatus	ExtractAU(/*[in]*/uint8_t* pBuf, /*[in]*/uint32_t dwBufSize, /*[out]*/AccessUnit* pAU);
-	
-	//size_t AomRbBytesRead(const struct aom_read_bit_buffer *rb);
-	//static int AomRbReadBit(struct aom_read_bit_buffer *rb);
-	//static int AomRbReadLiteral(struct aom_read_bit_buffer *rb, int bits);
-
-	//int64_t		getPosition();
-	//bool		setPosition(int64_t iPos);
-
 private:
 
 	//const uint8_t*	FindStartCode2(const uint8_t* pStart, const uint8_t* pEnd,  /*[out]*/uint32_t& uiStartCodeSize);

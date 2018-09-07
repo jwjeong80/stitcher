@@ -25,7 +25,7 @@ public:
 	~CAV1BStrStitcher(void);
 
 	int         Create(uint32_t uiNumTileRows, uint32_t uiNumTileCols, bool bAnnexB);
-	int			StitchSingleOBU(OBU *pOutOBUs, const OBU *pInpOBUs, uint32_t uiStitchFlags);
+	int			StitchSingleOBU(const OBU *pInpOBUs, uint32_t uiStitchFlags, OBU *pOutOBUs);
 	void        Destroy();
 
 	bool		m_bAnnexBFlag;
