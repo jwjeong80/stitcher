@@ -47,6 +47,8 @@ public:
 	COBUInfo();
 	~COBUInfo();
 
+
+
 	//void                InitSkipVars();
 
 	//TComSlice*          m_pSlicePilot;              // storage for slice header
@@ -78,6 +80,7 @@ public:
 	//												// (2) 또한 InitSkipVars() 실행 필요
 };
 
+
 class COBUParser
 {
 public:
@@ -87,7 +90,7 @@ public:
 	void                Create();
 	void                Destroy();
 
-	bool                DecodeOneOBU(uint8_t *pBitStream, uint32_t uiBitstreamSize);
+	bool                DecodeOneOBU(uint8_t *pBitStream, uint32_t uiBitstreamSize, bool AnnexB);
 
 	static aom_codec_err_t ReadObuHeader(struct aom_read_bit_buffer *rb,
 		int is_annexb, ObuHeader *header);
@@ -108,8 +111,7 @@ public:
 		struct aom_read_bit_buffer *rb);
 	static int AreSeqHeadersConsistent(const SequenceHeader *seq_params_old,
 		const SequenceHeader *seq_params_new);
-	static uint32_t ReadSequenceHeaderObu(AV1Decoder *pbi,
-		struct aom_read_bit_buffer *rb);
+	static uint32_t ReadSequenceHeaderObu(struct aom_read_bit_buffer *rb);
 	static uint32_t ReadFrameHeaderObu(AV1Decoder *pbi,
 		struct aom_read_bit_buffer *rb,
 		const uint8_t *data,
@@ -139,7 +141,7 @@ public:
 	static uint32_t ReadTemporalDelimiterObu() { return 0; }
 
 private:
-	//PsManager           m_PsManager;                // Parameter Set Manager
+	ShManager           m_ShManager;                // Parameter Set Manager
 	COBUInfo             m_AuInfo;                   // storage for slice header & segment data
 	//TComInputBitstream	m_SliceSegData;             // storage for slice segment data
 

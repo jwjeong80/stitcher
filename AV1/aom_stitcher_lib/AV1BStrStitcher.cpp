@@ -61,13 +61,13 @@ void CAV1BStrStitcher::Destroy()
 	//m_HevcWriter.Destroy();
 }
 
-int CAV1BStrStitcher::StitchSingleOBU(const OBU *pInpOBUs, uint32_t uiStitchFlags, OBU *pOutOBUs)
+int CAV1BStrStitcher::StitchSingleOBU(const OBU *pInpOBUs, uint32_t uiAnnexBFlags, OBU *pOutOBUs)
 {
 	uint8_t *pBitstream;
 	uint32_t uiBitstreamSize;
 
 	//bool bRwGlbHdrsFlag = uiStitchFlags & WRITE_GLB_HDRS;
-	bool bRwGlbHdrsFlag = uiStitchFlags;
+	bool bAnnexB = uiAnnexBFlags;
 
 	AV1Decoder pbi;
 
@@ -77,7 +77,7 @@ int CAV1BStrStitcher::StitchSingleOBU(const OBU *pInpOBUs, uint32_t uiStitchFlag
 		pBitstream = pInpOBUs[i].pMemAddrOfOBU;
 		uiBitstreamSize = pInpOBUs[i].uiSizeOfOBUs;
 
-		m_pOBUParser[i]->DecodeOneOBU(pBitstream, uiBitstreamSize);
+		m_pOBUParser[i]->DecodeOneOBU(pBitstream, uiBitstreamSize, bAnnexB);
 
 		//const uint8_t **ppSource = &pInpOBUs[i].pEachOBU[0];
 		//const uint8_t *pSource = *ppSource;
