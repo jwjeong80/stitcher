@@ -17,7 +17,21 @@
 //#include "../Common/NAL.h"
 //#include "../Decoder/SEIread.h"
 //#include "../Decoder/TDecCavlc.h"
-#include "av1/decoder/obu.h"
+//#include "av1/decoder/obu.h"
+#include "SequenceHeader.h"
+//#include "BitReader.h"
+
+typedef struct {
+	size_t size;  // Size (1 or 2 bytes) of the OBU header (including the
+				  // optional OBU extension header) in the bitstream.
+	OBU_TYPE type;
+	int has_size_field;
+	int has_extension;
+	// The following fields come from the OBU extension header and therefore are
+	// only used if has_extension is true.
+	int temporal_layer_id;
+	int spatial_layer_id;
+} ObuHeader;
 
 const uint32_t kObuForbiddenBitMask = 0x1;
 const uint32_t kObuForbiddenBitShift = 7;
@@ -81,7 +95,7 @@ public:
 };
 
 
-class COBUParser
+class COBUParser : public CBitReader
 {
 public:
 	COBUParser(void);
@@ -92,57 +106,72 @@ public:
 
 	bool                DecodeOneOBU(uint8_t *pBitStream, uint32_t uiBitstreamSize, bool AnnexB);
 
-	static aom_codec_err_t ReadObuHeader(struct aom_read_bit_buffer *rb,
+	bool ValidObuType(int obu_type);
+
+	aom_codec_err_t ReadObuHeader(struct AomReadBitBuffer *rb,
 		int is_annexb, ObuHeader *header);
 	aom_codec_err_t AomReadObuHeader(uint8_t *buffer, size_t buffer_length,
 		size_t *consumed, ObuHeader *header, int is_annexb);
 
-	int AomDecodeFrameFromObus(struct AV1Decoder *pbi, const uint8_t *data,
-                               const uint8_t *data_end,
-                               const uint8_t **p_data_end);
-	static aom_codec_err_t AomGetNumLayersFromOperatingPointIdc(
-		int operating_point_idc, unsigned int *number_spatial_layers,
-		unsigned int *number_temporal_layers);
-	static int IsObuInCurrentOperatingPoint(AV1Decoder *pbi,
-		ObuHeader obu_header);
-	static int ByteAlignment(AV1_COMMON *const cm,
-		struct aom_read_bit_buffer *const rb);
-	static int ReadBitstreamLevel(BitstreamLevel *bl,
-		struct aom_read_bit_buffer *rb);
-	static int AreSeqHeadersConsistent(const SequenceHeader *seq_params_old,
-		const SequenceHeader *seq_params_new);
-	static uint32_t ReadSequenceHeaderObu(struct aom_read_bit_buffer *rb);
-	static uint32_t ReadFrameHeaderObu(AV1Decoder *pbi,
-		struct aom_read_bit_buffer *rb,
-		const uint8_t *data,
-		const uint8_t **p_data_end,
-		int trailing_bits_present);
-	static void AllocTileListBuffer(AV1Decoder *pbi);
-	static void CopyDecodedTileToTileListBuffer(AV1Decoder *pbi,
-		uint8_t **output);
-	static uint32_t ReadAndDecodeOneTileList(AV1Decoder *pbi,
-		struct aom_read_bit_buffer *rb,
-		const uint8_t *data,
-		const uint8_t *data_end,
-		const uint8_t **p_data_end,
-		int *frame_decoding_finished);
-	static void ReadMetadataItutT35(const uint8_t *data, size_t sz);
-	static void ReadMetadataHdrCll(const uint8_t *data, size_t sz);
-	static void ReadMetadataHdrMdcv(const uint8_t *data, size_t sz);
-	static void ScalabilityStructure(struct aom_read_bit_buffer *rb);
-	static void ReadMetadataScalability(const uint8_t *data, size_t sz);
-	static void ReadMetadataTimecode(const uint8_t *data, size_t sz);
-	static size_t ReadMetadata(const uint8_t *data, size_t sz);
-	static aom_codec_err_t ReadObuSize(const uint8_t *data,
+	aom_codec_err_t ReadObuSize(const uint8_t *data,
 		size_t bytes_available,
 		size_t *const obu_size,
 		size_t *const length_field_size);
 
-	static uint32_t ReadTemporalDelimiterObu() { return 0; }
+	aom_codec_err_t AomReadObuHeaderAndSize(const uint8_t *data,
+		size_t bytes_available,
+		int is_annexb,
+		ObuHeader *obu_header,
+		size_t *const payload_size,
+		size_t *const bytes_read);
+
+	 uint32_t ReadTemporalDelimiterObu() { return 0; }
+	 uint32_t ReadSequenceHeaderObu(struct AomReadBitBuffer *rb);
+
+	//int AomDecodeFrameFromObus(struct AV1Decoder *pbi, const uint8_t *data,
+ //                              const uint8_t *data_end,
+ //                              const uint8_t **p_data_end);
+	//static aom_codec_err_t AomGetNumLayersFromOperatingPointIdc(
+	//	int operating_point_idc, unsigned int *number_spatial_layers,
+	//	unsigned int *number_temporal_layers);
+	//static int IsObuInCurrentOperatingPoint(AV1Decoder *pbi,
+	//	ObuHeader obu_header);
+	//static int ByteAlignment(AV1_COMMON *const cm,
+	//	struct aom_read_bit_buffer *const rb);
+	//static int ReadBitstreamLevel(BitstreamLevel *bl,
+	//	struct aom_read_bit_buffer *rb);
+	//static int AreSeqHeadersConsistent(const SequenceHeader *seq_params_old,
+	//	const SequenceHeader *seq_params_new);
+	////static uint32_t ReadSequenceHeaderObu(struct AomReadBitBuffer *rb);
+	//static uint32_t ReadFrameHeaderObu(AV1Decoder *pbi,
+	//	struct aom_read_bit_buffer *rb,
+	//	const uint8_t *data,
+	//	const uint8_t **p_data_end,
+	//	int trailing_bits_present);
+	//static void AllocTileListBuffer(AV1Decoder *pbi);
+	//static void CopyDecodedTileToTileListBuffer(AV1Decoder *pbi,
+	//	uint8_t **output);
+	//static uint32_t ReadAndDecodeOneTileList(AV1Decoder *pbi,
+	//	struct aom_read_bit_buffer *rb,
+	//	const uint8_t *data,
+	//	const uint8_t *data_end,
+	//	const uint8_t **p_data_end,
+	//	int *frame_decoding_finished);
+	//static void ReadMetadataItutT35(const uint8_t *data, size_t sz);
+	//static void ReadMetadataHdrCll(const uint8_t *data, size_t sz);
+	//static void ReadMetadataHdrMdcv(const uint8_t *data, size_t sz);
+	//static void ScalabilityStructure(struct aom_read_bit_buffer *rb);
+	//static void ReadMetadataScalability(const uint8_t *data, size_t sz);
+	//static void ReadMetadataTimecode(const uint8_t *data, size_t sz);
+	//static size_t ReadMetadata(const uint8_t *data, size_t sz);
+
+
+	
 
 private:
-	ShManager           m_ShManager;                // Parameter Set Manager
-	COBUInfo             m_AuInfo;                   // storage for slice header & segment data
+	CSequenceHeader      m_ShBuffer;
+	//ShManager            m_ShManager;                // Parameter Set Manager
+	COBUInfo             m_ObuInfo;                   // storage for slice header & segment data
 	//TComInputBitstream	m_SliceSegData;             // storage for slice segment data
 
 	//Bool                m_bShowLogsFlag;
@@ -156,13 +185,4 @@ private:
 	//Bool                m_bFirstSliceInBitstream;   // 비트스트림 중간에 EOS를 포함할 수도 있는 전체 비트스트림
 
 protected:
-
-	bool ParseObuHeader(uint8_t obu_header_byte, ObuHeader *obu_header);
-	bool ParseObuExtensionHeader(uint8_t ext_header_byte, ObuHeader *obu_header);
-	//void PrintObuHeader(const ObuHeader *header);
-	//bool DumpObu(const uint8_t *data, int length, int *obu_overhead_bytes);
-	bool ValidObuType(int obu_type);
-
-
 };
-#pragma once

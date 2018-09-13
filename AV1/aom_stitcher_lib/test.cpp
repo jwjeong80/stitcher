@@ -293,7 +293,8 @@ uint32_t __stdcall OnBStrStitchProc(void* pThis)
 		}
 		
 		// stitch all access units into single stream (HevcAuOut updated)
-		uiStitchFlags = (uiNumFrames) ? NO_INPUT_FLAGS_AV1 : WRITE_GLB_HDRS_AV1;
+		//uiStitchFlags = (uiNumFrames) ? NO_INPUT_FLAGS_AV1 : WRITE_GLB_HDRS_AV1;
+		uiStitchFlags = 0;
 		if (Keti_AV1_Stitcher_StitchSingleOBU(pcBStrStitcherHandle, pAV1OBU, uiStitchFlags, &AV1OBUOut))
 		{
 			//uint32_t uiObuSize = 0;

@@ -1,5 +1,21 @@
 #include "SequenceHeader.h"
 #include "CommonDef.h"
+#include "BitReader.h"
+
+CSequenceHeader::CSequenceHeader()
+{
+
+}
+CSequenceHeader::~CSequenceHeader()
+{
+
+}
+
+BITSTREAM_PROFILE CSequenceHeader::Av1ReadProfile(struct AomReadBitBuffer *rb)
+{
+	int profile = AomRbReadLiteral(rb, PROFILE_BITS);
+	return (BITSTREAM_PROFILE)profile;
+}
 
 
 ShManager::ShManager()
@@ -32,7 +48,7 @@ void ShManager::Destroy()
 	}
 }
 
-void ShManager::storeSequenceHeader(SequenceHeader *seqHeader)
+void ShManager::storeSequenceHeader(CSequenceHeader *seqHeader)
 {
 	if (m_ShBuffer[0])
 	{
