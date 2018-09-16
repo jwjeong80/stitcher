@@ -1,5 +1,5 @@
 #include <assert.h>
-#include "BitReader.h"
+#include "bit_reader.h"
 
 struct AomReadBitBuffer* CBitReader::InitReadBitBuffer(
 	struct AomReadBitBuffer *rb, const uint8_t *data,

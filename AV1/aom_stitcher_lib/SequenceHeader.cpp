@@ -1,6 +1,7 @@
 #include "SequenceHeader.h"
 #include "CommonDef.h"
-#include "BitReader.h"
+//#include "bit_reader.h"
+
 
 CSequenceHeader::CSequenceHeader()
 {
@@ -9,12 +10,6 @@ CSequenceHeader::CSequenceHeader()
 CSequenceHeader::~CSequenceHeader()
 {
 
-}
-
-BITSTREAM_PROFILE CSequenceHeader::Av1ReadProfile(struct AomReadBitBuffer *rb)
-{
-	int profile = AomRbReadLiteral(rb, PROFILE_BITS);
-	return (BITSTREAM_PROFILE)profile;
 }
 
 

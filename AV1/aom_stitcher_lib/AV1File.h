@@ -4,9 +4,11 @@
 //#pragma once
 
 //#include "LargeFile.h"
-#include "av1/decoder/obu.h"
-#include "aom/aom_codec.h"
+//#include "av1/decoder/obu.h"
+//#include "aom/aom_codec.h"
 //#include "aom_dsp/bitreader_buffer.h"
+#include <stdint.h>
+#include "obu_header.h"
 #ifndef MAX_OBU_NUM
 #define     MAX_OBU_NUM	(440 + 8) // = MAX_NUM_TILES + VPS/SPS/PPS...
 struct OBU

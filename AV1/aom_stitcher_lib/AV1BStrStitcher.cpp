@@ -15,7 +15,7 @@
 #include "CommonDef.h"
 #include "AV1BStrStitcher.h"
 
-#include "av1/decoder/obu.h"
+//#include "av1/decoder/obu.h"
 
 CAV1BStrStitcher::CAV1BStrStitcher(void)
 	: m_uiNumParsers(0)
@@ -68,16 +68,15 @@ int CAV1BStrStitcher::StitchSingleOBU(const OBU *pInpOBUs, uint32_t uiAnnexBFlag
 
 	//bool bRwGlbHdrsFlag = uiStitchFlags & WRITE_GLB_HDRS;
 	bool bAnnexB = uiAnnexBFlags;
-
-	AV1Decoder pbi;
-
+	
 	 //decode all OBUs
 	for (int i = 0; i < m_uiNumParsers; i++)
 	{
 		pBitstream = pInpOBUs[i].pMemAddrOfOBU;
 		uiBitstreamSize = pInpOBUs[i].uiSizeOfOBUs;
 
-		m_pOBUParser[i]->DecodeOneOBU(pBitstream, uiBitstreamSize, bAnnexB);
+		//m_pOBUParser[i]->DecodeOneOBU(pBitstream, uiBitstreamSize, bAnnexB);
+		m_pOBUParser[i]->DecodeOneOBUC(pBitstream, uiBitstreamSize, bAnnexB);
 
 		//const uint8_t **ppSource = &pInpOBUs[i].pEachOBU[0];
 		//const uint8_t *pSource = *ppSource;

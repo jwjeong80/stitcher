@@ -30,10 +30,16 @@
     <ClCompile Include="AV1File.cpp">
       <Filter>소스 파일</Filter>
     </ClCompile>
-    <ClCompile Include="BitReader.cpp">
+    <ClCompile Include="SequenceHeader.cpp">
       <Filter>소스 파일</Filter>
     </ClCompile>
-    <ClCompile Include="SequenceHeader.cpp">
+    <ClCompile Include="bit_reader.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
+    <ClCompile Include="av1_common.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
+    <ClCompile Include="bit_reader_c.cpp">
       <Filter>소스 파일</Filter>
     </ClCompile>
   </ItemGroup>
@@ -65,10 +71,25 @@
     <ClInclude Include="Define.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
-    <ClInclude Include="BitReader.h">
+    <ClInclude Include="SequenceHeader.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
-    <ClInclude Include="SequenceHeader.h">
+    <ClInclude Include="FrameHeader.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="bit_reader.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="obu_header.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="av1_common.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="bit_reader_c.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="config.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
   </ItemGroup>

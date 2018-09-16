@@ -1,6 +1,10 @@
+﻿#include <stdio.h>
 //#include "av1/decoder/obu.h"
-
-#include "BitReader.h"
+//#include "av1/common/enums.h"
+//#include "bit_reader.h"
+//#include "av1/common/timing.h"
+#include "bit_reader_c.h"
+//#include "av1_common.h"
 ///////////////////////////////////////////////////////////////////////////////
 #define MAX_NUM_TEMPORAL_LAYERS 8
 #define MAX_NUM_SPATIAL_LAYERS 4
@@ -23,44 +27,128 @@ typedef enum BITSTREAM_PROFILE {
 	MAX_PROFILES,
 } BITSTREAM_PROFILE;
 
+typedef struct BitstreamLevel {
+	uint8_t major;
+	uint8_t minor;
+} BitstreamLevel;
+
+
+#define LEVEL_MAJOR_BITS 3
+#define LEVEL_MINOR_BITS 2
+#define LEVEL_BITS (LEVEL_MAJOR_BITS + LEVEL_MINOR_BITS)
+
+#define LEVEL_MAJOR_MIN 2
+#define LEVEL_MAJOR_MAX ((1 << LEVEL_MAJOR_BITS) - 1 + LEVEL_MAJOR_MIN)
+#define LEVEL_MINOR_MIN 0
+#define LEVEL_MINOR_MAX ((1 << LEVEL_MINOR_BITS) - 1)
+
+#define OP_POINTS_CNT_MINUS_1_BITS 5
+#define OP_POINTS_IDC_BITS 12
+
+typedef struct timing_info {
+	uint32_t num_units_in_display_tick;
+	uint32_t time_scale;
+	int equal_picture_interval;
+	uint32_t num_ticks_per_picture_minus_1;
+} timing_info_t;
+
+typedef struct decoder_model_info {
+	int buffer_delay_length_minus_1;
+	uint32_t num_units_in_decoding_tick;
+	int buffer_removal_time_length_minus_1;
+	int frame_presentation_time_length_minus_1;
+} decoder_model_info_t;
+
 typedef struct aom_dec_model_op_parameters {
-	int decoder_model_param_present_flag;
+	int decoder_model_present_for_this_op;
+	int initial_display_delay_present_for_this_op;
 	int64_t bitrate;
 	int64_t buffer_size;
 	uint32_t decoder_buffer_delay;
 	uint32_t encoder_buffer_delay;
 	int low_delay_mode_flag;
 	int display_model_param_present_flag;
-	int initial_display_delay;
 } aom_dec_model_op_parameters_t;
 
 
-class CSequenceHeader
+class CSequenceHeader : CBitReader
 {
 public:
 	CSequenceHeader();
 	virtual ~CSequenceHeader();
 
+	int is_valid_seq_level_idx(uint8_t seq_level_idx) {
+		return seq_level_idx < 24 || seq_level_idx == 31;
+	}
 
-	BITSTREAM_PROFILE Av1ReadProfile(struct AomReadBitBuffer *rb); 
+
+	void ShWriteProfile(BITSTREAM_PROFILE seq_profile) { m_seq_profile = seq_profile; }
+	void ShWriteStillPicture(int still_picture) { m_still_picture = still_picture; }
+	void ShWriteReducedStillPictureHdr(int reduced_still_picture_header) { m_reduced_still_picture_header = reduced_still_picture_header; }
+	void ShWriteTimingInfoPresentFlag(int timing_info_present_flag) { m_timing_info_present_flag = timing_info_present_flag; }
+	void ShWriteDecoderModelInfoPresentFlag(int decoder_model_info_present_flag) { m_decoder_model_info_present_flag = decoder_model_info_present_flag; }
+	void ShWriteInitialDisplayDelayPresentFlag(int initial_display_delay_present_flag) { m_initial_display_delay_present_flag = initial_display_delay_present_flag; }
+	void ShWritemOperatingPointsCntMinus1(int operating_points_cnt_minus_1) { m_operating_points_cnt_minus_1 = operating_points_cnt_minus_1; }
+	void ShWritemOperatingPointIdc(int idx, int operating_point_idc) { m_operating_point_idc[idx] = operating_point_idc; }
+	void ShWriteSeqLevelIdx(int idx, BitstreamLevel seq_level_idx) { m_seq_level_idx[idx] = seq_level_idx; }
+	void ShWriteSeqTier(int idx, uint8_t seq_tier) { m_seq_tier[idx] = seq_tier; }
+	void ShWriteDecoderModelPresentForThisOp(int idx, int decoder_model_present_for_this_op) { m_op_params[idx].decoder_model_present_for_this_op = decoder_model_present_for_this_op; }
+	void ShWriteInitialDisplayDelayPresentForThisOp(int idx, int initial_display_delay_present_for_this_op) { m_op_params[idx].initial_display_delay_present_for_this_op = initial_display_delay_present_for_this_op; }
+
+	void ShWriteTimingInfoHeader(CBitReader *rb) {
+		m_timing_info.num_units_in_display_tick = AomRbReadUnsignedLiteral(32);  // Number of units in a display tick
+		m_timing_info.time_scale = AomRbReadUnsignedLiteral(32);  // Time scale
+		if (m_timing_info.num_units_in_display_tick == 0 || m_timing_info.time_scale == 0) {
+			printf("num_units_in_display_tick and time_scale must be greater than 0. \n");
+		}
+		m_timing_info.equal_picture_interval = AomRbReadBit();  // Equal picture interval bit
+		if (m_timing_info.equal_picture_interval) {
+			m_timing_info.num_ticks_per_picture_minus_1 = AomRbReadUvlc() + 1;  // ticks per picture
+			if (m_timing_info.num_ticks_per_picture_minus_1 == 0) {
+				printf("num_ticks_per_picture_minus_1 cannot be (1 << 32) − 1.");
+			}
+		}
+	}
+	void ShWriteDecoderModelInfo(CBitReader *rb) {
+		m_decoder_model_info.buffer_delay_length_minus_1 = AomRbReadLiteral(5) + 1;
+		m_decoder_model_info.num_units_in_decoding_tick = AomRbReadUnsignedLiteral(32);  // Number of units in a decoding tick
+		m_decoder_model_info.buffer_removal_time_length_minus_1 = AomRbReadLiteral(5) + 1;
+		m_decoder_model_info.frame_presentation_time_length_minus_1 = AomRbReadLiteral(5) + 1;
+	}
+
+	BITSTREAM_PROFILE ShReadProfile() { return m_seq_profile; }
+	int AvReadStillPicture() { return m_still_picture; }
+	int ShReadReducedStillPictureHdr() { return m_reduced_still_picture_header; }
+	int ShReadTimingInfoPresentFlag() { return m_timing_info_present_flag; }
+	int ShReadDecoderModelInfoPresentFlag() { return m_decoder_model_info_present_flag; }
+	int ShReadInitialDisplayDelayPresentFlag() { return m_initial_display_delay_present_flag; }
+	int ShReadOperatingPointsCntMinus1() { return m_operating_points_cnt_minus_1; }
+	int ShReadOperatingPointIdc(int idx) { return m_operating_point_idc[idx]; }
+	BitstreamLevel ShReadSeqLevelIdx(int idx) { return m_seq_level_idx[idx]; }
+	uint8_t ShReadSeqTier(int idx) { return m_seq_tier[idx]; }
+	int ShReadDecoderModelPresentForThisOp(int idx) { return m_op_params[idx].decoder_model_present_for_this_op; }
+	int ShReadInitialDisplayDelayPresentForThisOp(int idx) { return m_op_params[idx].initial_display_delay_present_for_this_op; }
+
+
 	
 
 private:
-	BITSTREAM_PROFILE m_SeqProfile;
-	int m_StillPicture;
-	int m_ReducedStillPictureHeader;
-	int m_TimingInfoPresentFlag;
-	int m_DecoderModelInfoPresentFlag;
-	int m_InitialDisplayDelayPresentFlag;
+	BITSTREAM_PROFILE m_seq_profile;
+	int m_still_picture;
+	int m_reduced_still_picture_header;
+	int m_timing_info_present_flag;
+	int m_decoder_model_info_present_flag;
+	int m_initial_display_delay_present_flag;
 
-	int m_OperatingPointsCntMinus1;
-	int m_OperatingPointIdc[MAX_NUM_OPERATING_POINTS];
-	int m_SeqLevelIdx[MAX_NUM_OPERATING_POINTS];
-	int m_SeqTier[MAX_NUM_OPERATING_POINTS];
-	int m_DecoderModelPresentForThisOp[MAX_NUM_OPERATING_POINTS];
+	int m_operating_points_cnt_minus_1;
+	int m_operating_point_idc[MAX_NUM_OPERATING_POINTS];
+	BitstreamLevel m_seq_level_idx[MAX_NUM_OPERATING_POINTS];
+	uint8_t m_seq_tier[MAX_NUM_OPERATING_POINTS];
 	//decoder_model_info()
-	aom_dec_model_op_parameters_t m_OpParams[MAX_NUM_OPERATING_POINTS + 1];
-	int m_InitialDisplayDelayPresentForThisOp[MAX_NUM_OPERATING_POINTS];
+	aom_dec_model_op_parameters_t m_op_params[MAX_NUM_OPERATING_POINTS + 1];
+	timing_info_t m_timing_info;
+	decoder_model_info_t m_decoder_model_info;
+
 	int m_InitialDisplayDelayMinus1[MAX_NUM_OPERATING_POINTS];
 
 	//choose_operating_point()

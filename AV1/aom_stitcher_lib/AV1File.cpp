@@ -12,7 +12,8 @@
 #include <stdlib.h>
 #include <string.h>  // for memcpy()
 #include "AV1File.h"
-#include "aom/aom_integer.h"
+#include "av1_common.h"
+//#include "aom/aom_integer.h"
 
 #include <assert.h>
 #include <io.h>

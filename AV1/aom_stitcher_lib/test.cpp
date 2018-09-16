@@ -1,8 +1,8 @@
-#include "av1/decoder/obu.h"
+//#include "av1/decoder/obu.h"
 
 //#pragma comment(lib, "E:/Project/AV1/av1_stitcher/AV1/x64/Debug/AV1.lib")
 
-#pragma comment(lib, "../x64/Debug/AV1.lib")
+//#pragma comment(lib, "../x64/Debug/AV1.lib")
 
 #include "stdafx.h"
 
