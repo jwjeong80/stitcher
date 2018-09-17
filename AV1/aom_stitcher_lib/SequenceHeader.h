@@ -32,7 +32,6 @@ typedef struct BitstreamLevel {
 	uint8_t minor;
 } BitstreamLevel;
 
-
 #define LEVEL_MAJOR_BITS 3
 #define LEVEL_MINOR_BITS 2
 #define LEVEL_BITS (LEVEL_MAJOR_BITS + LEVEL_MINOR_BITS)
@@ -92,48 +91,132 @@ public:
 	void ShParserOperatingPointIdc(int op_num, int operating_point_idc) { m_operating_point_idc[op_num] = operating_point_idc; }
 	
 	void ShParserSeqTier(int op_num, uint8_t seq_tier) { m_seq_tier[op_num] = seq_tier; }
-	void ShParserDecoderModelPresentForThisOp(int op_num, int decoder_model_present_for_this_op) { m_op_params[op_num].decoder_model_present_for_this_op = decoder_model_present_for_this_op; }
-	void ShParserInitialDisplayDelayPresentForThisOp(int op_num, int initial_display_delay_present_for_this_op) { m_op_params[op_num].initial_display_delay_present_for_this_op = initial_display_delay_present_for_this_op; }
+	void ShParserDecoderModelPresentForThisOp(int op_num, int decoder_model_present_for_this_op) { 
+		m_op_params[op_num].decoder_model_present_for_this_op = decoder_model_present_for_this_op; }
+	void ShParserInitialDisplayDelayPresentForThisOp(int op_num, int initial_display_delay_present_for_this_op) { 
+		m_op_params[op_num].initial_display_delay_present_for_this_op = initial_display_delay_present_for_this_op; }
+	void ShParserInitialDisplayDelayMinus1(int op_num, int initial_display_delay_minus_1) {
+		m_initial_display_delay_minus_1[op_num] = initial_display_delay_minus_1;
+	}
+
 
 	int ShParserSeqLevelIdx(int idx, CBitReader *rb) {
 		const uint8_t seq_level_idx = rb->AomRbReadLiteral(LEVEL_BITS);
-		if (is_valid_seq_level_idx(seq_level_idx)) return 0;
+		if (!is_valid_seq_level_idx(seq_level_idx)) return 0;
 		m_seq_level_idx[idx].major = (seq_level_idx >> LEVEL_MINOR_BITS) + LEVEL_MAJOR_MIN;
 		m_seq_level_idx[idx].minor = seq_level_idx & ((1 << LEVEL_MINOR_BITS) - 1);
 		return 1;
 	}
 
 	void ShParserTimingInfoHeader(CBitReader *rb) {
-		m_timing_info.num_units_in_display_tick = AomRbReadUnsignedLiteral(32);  // Number of units in a display tick
-		m_timing_info.time_scale = AomRbReadUnsignedLiteral(32);  // Time scale
+		m_timing_info.num_units_in_display_tick = rb->AomRbReadUnsignedLiteral(32);  // Number of units in a display tick
+		m_timing_info.time_scale = rb->AomRbReadUnsignedLiteral(32);  // Time scale
 		if (m_timing_info.num_units_in_display_tick == 0 || m_timing_info.time_scale == 0) {
 			printf("num_units_in_display_tick and time_scale must be greater than 0. \n");
 		}
-		m_timing_info.equal_picture_interval = AomRbReadBit();  // Equal picture interval bit
+		m_timing_info.equal_picture_interval = rb->AomRbReadBit();  // Equal picture interval bit
 		if (m_timing_info.equal_picture_interval) {
-			m_timing_info.num_ticks_per_picture_minus_1 = AomRbReadUvlc() + 1;  // ticks per picture
+			m_timing_info.num_ticks_per_picture_minus_1 = rb->AomRbReadUvlc() + 1;  // ticks per picture
 			if (m_timing_info.num_ticks_per_picture_minus_1 == 0) {
 				printf("num_ticks_per_picture_minus_1 cannot be (1 << 32) − 1.");
 			}
 		}
 	}
 	void ShParserDecoderModelInfo(CBitReader *rb) {
-		m_decoder_model_info.buffer_delay_length_minus_1 = AomRbReadLiteral(5) + 1;
-		m_decoder_model_info.num_units_in_decoding_tick = AomRbReadUnsignedLiteral(32);  // Number of units in a decoding tick
-		m_decoder_model_info.buffer_removal_time_length_minus_1 = AomRbReadLiteral(5) + 1;
-		m_decoder_model_info.frame_presentation_time_length_minus_1 = AomRbReadLiteral(5) + 1;
+		m_decoder_model_info.buffer_delay_length_minus_1 = rb->AomRbReadLiteral(5) + 1;
+		m_decoder_model_info.num_units_in_decoding_tick = rb->AomRbReadUnsignedLiteral(32);  // Number of units in a decoding tick
+		m_decoder_model_info.buffer_removal_time_length_minus_1 = rb->AomRbReadLiteral(5) + 1;
+		m_decoder_model_info.frame_presentation_time_length_minus_1 = rb->AomRbReadLiteral(5) + 1;
 	}
 
-	void ShParserOperatingParametersInfo(CBitReader *rb, int op_num) {
+	void ShParserOperatingParametersInfo(int op_num, CBitReader *rb) {
 		// The cm->op_params array has MAX_NUM_OPERATING_POINTS + 1 elements.
 		if (op_num > MAX_NUM_OPERATING_POINTS) {
 			printf("AV1 does not support %d decoder model operating points",op_num + 1);
 		}
 
-		m_op_params[op_num].decoder_buffer_delay = AomRbReadUnsignedLiteral(m_decoder_model_info.buffer_delay_length_minus_1);
-		m_op_params[op_num].encoder_buffer_delay = AomRbReadUnsignedLiteral(m_decoder_model_info.buffer_delay_length_minus_1);
-		m_op_params[op_num].low_delay_mode_flag = AomRbReadBit();
+		m_op_params[op_num].decoder_buffer_delay = rb->AomRbReadUnsignedLiteral(m_decoder_model_info.buffer_delay_length_minus_1);
+		m_op_params[op_num].encoder_buffer_delay = rb->AomRbReadUnsignedLiteral(m_decoder_model_info.buffer_delay_length_minus_1);
+		m_op_params[op_num].low_delay_mode_flag = rb->AomRbReadBit();
 	}
+
+	void ShParserSequenceInfo(CBitReader *rb) {
+		m_frame_width_bits_minus_1 = rb->AomRbReadLiteral(4);
+		m_frame_height_bits_minus_1 = rb->AomRbReadLiteral(4);
+		m_max_frame_width_minus_1 = rb->AomRbReadLiteral(m_frame_width_bits_minus_1+1);
+		m_max_frame_height_minus_1 = rb->AomRbReadLiteral(m_frame_height_bits_minus_1 + 1);
+
+		if(m_reduced_still_picture_header)
+			m_frame_id_numbers_present_flag = 0;
+		else
+			m_frame_id_numbers_present_flag = rb->AomRbReadBit();
+
+		if (m_frame_id_numbers_present_flag)
+		{
+			m_delta_frame_id_length_minus_2 = rb->AomRbReadLiteral(4);
+			m_additional_frame_id_length_minus_1 = rb->AomRbReadLiteral(3);
+		}
+		m_use_128x128_superblock = rb->AomRbReadBit();
+		m_enable_filter_intra = rb->AomRbReadBit();
+		m_enable_intra_edge_filter = rb->AomRbReadBit();
+
+		if (m_reduced_still_picture_header) {
+			m_enable_interintra_compound = 0;
+			m_enable_masked_compound = 0;
+			m_enable_warped_motion = 0;
+			m_enable_dual_filter = 0;
+			m_enable_order_hint = 0;
+			m_enable_jnt_comp = 0;
+			m_enable_ref_frame_mvs = 0;
+			m_seq_force_screen_content_tools = 2;  // SELECT_SCREEN_CONTENT_TOOLS
+			m_seq_force_integer_mv = 2;            // SELECT_INTEGER_MV
+			m_order_hint_bits_minus_1 = -1;
+		}
+		else {
+			m_enable_interintra_compound = rb->AomRbReadBit();
+			m_enable_masked_compound = rb->AomRbReadBit();
+			m_enable_warped_motion = rb->AomRbReadBit();
+			m_enable_dual_filter = rb->AomRbReadBit();
+			m_enable_order_hint = rb->AomRbReadBit();
+
+			if (m_enable_order_hint) {
+				m_enable_jnt_comp = rb->AomRbReadBit();
+				m_enable_ref_frame_mvs = rb->AomRbReadBit();
+			}
+			else {
+				m_enable_jnt_comp = 0;
+				m_enable_ref_frame_mvs = 0;
+			}
+			m_seq_choose_screen_content_tools = rb->AomRbReadBit();
+
+			if (m_seq_choose_screen_content_tools)
+				m_seq_force_screen_content_tools = 2; // SELECT_SCREEN_CONTENT_TOOLS
+			else
+				m_seq_force_screen_content_tools = rb->AomRbReadBit();
+
+			if (m_seq_force_screen_content_tools > 0) {
+				m_seq_choose_integer_mv = rb->AomRbReadBit();
+
+				if (m_seq_choose_integer_mv)
+					m_seq_force_integer_mv = 2;            // SELECT_INTEGER_MV
+				else
+					m_seq_force_integer_mv = rb->AomRbReadBit();
+			}
+			else {
+				m_seq_force_integer_mv = 2;            // SELECT_INTEGER_MV
+			}
+
+			if (m_enable_order_hint)
+				m_order_hint_bits_minus_1 = rb->AomRbReadLiteral(3);
+			else
+				m_order_hint_bits_minus_1 = -1;
+		}
+
+		m_enable_superres = rb->AomRbReadBit();
+		m_enable_cdef = rb->AomRbReadBit();
+		m_enable_restoration = rb->AomRbReadBit();
+	}
+
 
 	BITSTREAM_PROFILE ShReadProfile() { return m_seq_profile; }
 	int AvReadStillPicture() { return m_still_picture; }
@@ -175,36 +258,36 @@ private:
 	timing_info_t m_timing_info;
 	decoder_model_info_t m_decoder_model_info;
 
-	int m_InitialDisplayDelayMinus1[MAX_NUM_OPERATING_POINTS];
+	int m_initial_display_delay_minus_1[MAX_NUM_OPERATING_POINTS];
 
 	//choose_operating_point()
-	int m_FrameWidthBitsMinus1;
-	int m_FrameHeightBitsMinus1;
-	int m_MaxFrameWidthMinus1;
-	int m_MaxFrameHeightMinus1;
-	int m_FrameIdNumbersPresentFlag;
-	int m_DeltaFrameIdLengthMinus2;
-	int m_AdditionalFrameIdLengthMinus1;
-	int m_Use128x128Superblock;  // Size of the superblock used for this frame
-	int m_EnableFilterIntra;
-	int m_EnableIntraEdgeFilter;
+	int m_frame_width_bits_minus_1;
+	int m_frame_height_bits_minus_1;
+	int m_max_frame_width_minus_1;
+	int m_max_frame_height_minus_1;
+	int m_frame_id_numbers_present_flag;
+	int m_delta_frame_id_length_minus_2;
+	int m_additional_frame_id_length_minus_1;
+	int m_use_128x128_superblock;  // Size of the superblock used for this frame
+	int m_enable_filter_intra;
+	int m_enable_intra_edge_filter;
 
-	int m_EnableInterintraCompound;
-	int m_EnableMaskedCompound;
-	int m_EnableWarpedMotion;
-	int m_EnableDualFilter;
-	int m_EnableOrderHint;
-	int m_EnableJntComp;
-	int m_EnableRefFrameMvs;
-	int m_SeqChooseScreenContentTools;
-	int m_SeqForceScreenContentTools;
-	int m_SeqChooseIntegerMv;
-	int m_SeqForceIntegerMv;
-	int m_OrderHintBitsMinus1;
+	int m_enable_interintra_compound;
+	int m_enable_masked_compound;
+	int m_enable_warped_motion;
+	int m_enable_dual_filter;
+	int m_enable_order_hint;
+	int m_enable_jnt_comp;
+	int m_enable_ref_frame_mvs;
+	int m_seq_choose_screen_content_tools;
+	int m_seq_force_screen_content_tools;
+	int m_seq_choose_integer_mv;
+	int m_seq_force_integer_mv;
+	int m_order_hint_bits_minus_1;
 
-	int m_EnableSuperres;
-	int m_EnableCdef;
-	int m_EnableRestoration;
+	int m_enable_superres;
+	int m_enable_cdef;
+	int m_enable_restoration;
 
 	//color_config()
 	int m_HighBitdepth;

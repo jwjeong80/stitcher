@@ -436,8 +436,8 @@ bool COBUParser::DecodeOneOBUC(uint8_t *pBitStream, uint32_t uiBitstreamSize, bo
 		size_t decoded_payload_size = 0;
 		size_t obu_payload_offset = 0;
 		size_t bytes_read = 0;
-		//const size_t bytes_available = data_end - data;
-		const size_t bytes_available = uiBitstreamSize;
+		const size_t bytes_available = data_end - data;
+		//const size_t bytes_available = uiBitstreamSize;
 
 		aom_codec_err_t status =
 			AomReadObuHeaderAndSize(data, bytes_available, bAnnexB,
@@ -562,9 +562,9 @@ uint32_t COBUParser::ReadSequenceHeaderObu(CBitReader *rb)
 		pSh->ShParserInitialDisplayDelayPresentForThisOp(0, 0);
 	}
 	else {
-		pSh->ShParserTimingInfoPresentFlag(rb->AomRbReadBit());
+		pSh->ShParserTimingInfoPresentFlag(rb->AomRbReadBit()); // timing_info_present_flag
 		if(pSh->ShReadTimingInfoPresentFlag()) {
-			pSh->ShParserTimingInfoHeader(rb); //decodeframe.c
+			pSh->ShParserTimingInfoHeader(rb);
 			pSh->ShParserDecoderModelInfoPresentFlag(rb->AomRbReadBit());
 
 			if (pSh->ShReadDecoderModelInfoPresentFlag())
@@ -573,8 +573,8 @@ uint32_t COBUParser::ReadSequenceHeaderObu(CBitReader *rb)
 		else {
 			pSh->ShParserDecoderModelInfoPresentFlag(0);
 		}
-		pSh->ShParserDecoderModelInfoPresentFlag(rb->AomRbReadBit());
-		pSh->ShParserOperatingPointsCntMinus1(OP_POINTS_CNT_MINUS_1_BITS);
+		pSh->ShParserInitialDisplayDelayPresentFlag(rb->AomRbReadBit());
+		pSh->ShParserOperatingPointsCntMinus1(rb->AomRbReadLiteral(OP_POINTS_CNT_MINUS_1_BITS));
 		
 		for (int i = 0; i < pSh->ShReadOperatingPointsCntMinus1() + 1; i++) {
 			pSh->ShParserOperatingPointIdc(i, rb->AomRbReadLiteral(OP_POINTS_IDC_BITS));			
@@ -614,8 +614,8 @@ uint32_t COBUParser::ReadSequenceHeaderObu(CBitReader *rb)
 			}
 		}
 	}
-	
-	av1_read_sequence_header(cm, rb, seq_params); //decodeframe.c
+
+	pSh->ShParserSequenceInfo(rb);
 
 	//av1_read_color_config(rb, pbi->allow_lowbitdepth, seq_params, &cm->error); //decodeframe.c
 	//if (!(seq_params->subsampling_x == 0 && seq_params->subsampling_y == 0) &&
