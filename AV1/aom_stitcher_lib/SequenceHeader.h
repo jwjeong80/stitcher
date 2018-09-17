@@ -82,20 +82,28 @@ public:
 	}
 
 
-	void ShWriteProfile(BITSTREAM_PROFILE seq_profile) { m_seq_profile = seq_profile; }
-	void ShWriteStillPicture(int still_picture) { m_still_picture = still_picture; }
-	void ShWriteReducedStillPictureHdr(int reduced_still_picture_header) { m_reduced_still_picture_header = reduced_still_picture_header; }
-	void ShWriteTimingInfoPresentFlag(int timing_info_present_flag) { m_timing_info_present_flag = timing_info_present_flag; }
-	void ShWriteDecoderModelInfoPresentFlag(int decoder_model_info_present_flag) { m_decoder_model_info_present_flag = decoder_model_info_present_flag; }
-	void ShWriteInitialDisplayDelayPresentFlag(int initial_display_delay_present_flag) { m_initial_display_delay_present_flag = initial_display_delay_present_flag; }
-	void ShWritemOperatingPointsCntMinus1(int operating_points_cnt_minus_1) { m_operating_points_cnt_minus_1 = operating_points_cnt_minus_1; }
-	void ShWritemOperatingPointIdc(int idx, int operating_point_idc) { m_operating_point_idc[idx] = operating_point_idc; }
-	void ShWriteSeqLevelIdx(int idx, BitstreamLevel seq_level_idx) { m_seq_level_idx[idx] = seq_level_idx; }
-	void ShWriteSeqTier(int idx, uint8_t seq_tier) { m_seq_tier[idx] = seq_tier; }
-	void ShWriteDecoderModelPresentForThisOp(int idx, int decoder_model_present_for_this_op) { m_op_params[idx].decoder_model_present_for_this_op = decoder_model_present_for_this_op; }
-	void ShWriteInitialDisplayDelayPresentForThisOp(int idx, int initial_display_delay_present_for_this_op) { m_op_params[idx].initial_display_delay_present_for_this_op = initial_display_delay_present_for_this_op; }
+	void ShParserProfile(BITSTREAM_PROFILE seq_profile) { m_seq_profile = seq_profile; }
+	void ShParserStillPicture(int still_picture) { m_still_picture = still_picture; }
+	void ShParserReducedStillPictureHdr(int reduced_still_picture_header) { m_reduced_still_picture_header = reduced_still_picture_header; }
+	void ShParserTimingInfoPresentFlag(int timing_info_present_flag) { m_timing_info_present_flag = timing_info_present_flag; }
+	void ShParserDecoderModelInfoPresentFlag(int decoder_model_info_present_flag) { m_decoder_model_info_present_flag = decoder_model_info_present_flag; }
+	void ShParserInitialDisplayDelayPresentFlag(int initial_display_delay_present_flag) { m_initial_display_delay_present_flag = initial_display_delay_present_flag; }
+	void ShParserOperatingPointsCntMinus1(int operating_points_cnt_minus_1) { m_operating_points_cnt_minus_1 = operating_points_cnt_minus_1; }
+	void ShParserOperatingPointIdc(int op_num, int operating_point_idc) { m_operating_point_idc[op_num] = operating_point_idc; }
+	
+	void ShParserSeqTier(int op_num, uint8_t seq_tier) { m_seq_tier[op_num] = seq_tier; }
+	void ShParserDecoderModelPresentForThisOp(int op_num, int decoder_model_present_for_this_op) { m_op_params[op_num].decoder_model_present_for_this_op = decoder_model_present_for_this_op; }
+	void ShParserInitialDisplayDelayPresentForThisOp(int op_num, int initial_display_delay_present_for_this_op) { m_op_params[op_num].initial_display_delay_present_for_this_op = initial_display_delay_present_for_this_op; }
 
-	void ShWriteTimingInfoHeader(CBitReader *rb) {
+	int ShParserSeqLevelIdx(int idx, CBitReader *rb) {
+		const uint8_t seq_level_idx = rb->AomRbReadLiteral(LEVEL_BITS);
+		if (is_valid_seq_level_idx(seq_level_idx)) return 0;
+		m_seq_level_idx[idx].major = (seq_level_idx >> LEVEL_MINOR_BITS) + LEVEL_MAJOR_MIN;
+		m_seq_level_idx[idx].minor = seq_level_idx & ((1 << LEVEL_MINOR_BITS) - 1);
+		return 1;
+	}
+
+	void ShParserTimingInfoHeader(CBitReader *rb) {
 		m_timing_info.num_units_in_display_tick = AomRbReadUnsignedLiteral(32);  // Number of units in a display tick
 		m_timing_info.time_scale = AomRbReadUnsignedLiteral(32);  // Time scale
 		if (m_timing_info.num_units_in_display_tick == 0 || m_timing_info.time_scale == 0) {
@@ -109,11 +117,22 @@ public:
 			}
 		}
 	}
-	void ShWriteDecoderModelInfo(CBitReader *rb) {
+	void ShParserDecoderModelInfo(CBitReader *rb) {
 		m_decoder_model_info.buffer_delay_length_minus_1 = AomRbReadLiteral(5) + 1;
 		m_decoder_model_info.num_units_in_decoding_tick = AomRbReadUnsignedLiteral(32);  // Number of units in a decoding tick
 		m_decoder_model_info.buffer_removal_time_length_minus_1 = AomRbReadLiteral(5) + 1;
 		m_decoder_model_info.frame_presentation_time_length_minus_1 = AomRbReadLiteral(5) + 1;
+	}
+
+	void ShParserOperatingParametersInfo(CBitReader *rb, int op_num) {
+		// The cm->op_params array has MAX_NUM_OPERATING_POINTS + 1 elements.
+		if (op_num > MAX_NUM_OPERATING_POINTS) {
+			printf("AV1 does not support %d decoder model operating points",op_num + 1);
+		}
+
+		m_op_params[op_num].decoder_buffer_delay = AomRbReadUnsignedLiteral(m_decoder_model_info.buffer_delay_length_minus_1);
+		m_op_params[op_num].encoder_buffer_delay = AomRbReadUnsignedLiteral(m_decoder_model_info.buffer_delay_length_minus_1);
+		m_op_params[op_num].low_delay_mode_flag = AomRbReadBit();
 	}
 
 	BITSTREAM_PROFILE ShReadProfile() { return m_seq_profile; }
@@ -128,6 +147,13 @@ public:
 	uint8_t ShReadSeqTier(int idx) { return m_seq_tier[idx]; }
 	int ShReadDecoderModelPresentForThisOp(int idx) { return m_op_params[idx].decoder_model_present_for_this_op; }
 	int ShReadInitialDisplayDelayPresentForThisOp(int idx) { return m_op_params[idx].initial_display_delay_present_for_this_op; }
+
+	int ShReadSeqLevelIdxMajor(int idx) {
+		return m_seq_level_idx[idx].major;
+	}	
+	int ShReadSeqLevelIdxMinor(int idx) {
+		return m_seq_level_idx[idx].minor;
+	}
 
 
 	

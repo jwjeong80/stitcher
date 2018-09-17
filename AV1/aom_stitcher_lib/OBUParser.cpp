@@ -535,15 +535,15 @@ uint32_t COBUParser::ReadSequenceHeaderObu(CBitReader *rb)
 	const uint32_t saved_bit_offset = rb->m_bit_offset;
 	CSequenceHeader *pSh = &m_ShBuffer;
 
-	pSh->ShWriteProfile(BITSTREAM_PROFILE(rb->AomRbReadLiteral(PROFILE_BITS)));
+	pSh->ShParserProfile(BITSTREAM_PROFILE(rb->AomRbReadLiteral(PROFILE_BITS)));
 
 	if (pSh->ShReadProfile() > CONFIG_MAX_DECODE_PROFILE) {
 		return 0;
 	}
 
 	// Still picture or not
-	pSh->ShWriteStillPicture(rb->AomRbReadBit());
-	pSh->ShWriteReducedStillPictureHdr(rb->AomRbReadBit());
+	pSh->ShParserStillPicture(rb->AomRbReadBit());
+	pSh->ShParserReducedStillPictureHdr(rb->AomRbReadBit());
 
 	// Video must have reduced_still_picture_hdr = 0
 	if (pSh->AvReadStillPicture() && pSh->ShReadReducedStillPictureHdr()) {
@@ -551,119 +551,71 @@ uint32_t COBUParser::ReadSequenceHeaderObu(CBitReader *rb)
 	}
 
 	if (pSh->ShReadReducedStillPictureHdr()) {
-		pSh->ShWriteTimingInfoPresentFlag(0);
-		pSh->ShWriteDecoderModelInfoPresentFlag(0);
-		pSh->ShWriteInitialDisplayDelayPresentFlag(0);
-		pSh->ShWritemOperatingPointsCntMinus1(0);
-		pSh->ShWritemOperatingPointIdc(0, 0);
-
-		const uint8_t seq_level_idx = rb->AomRbReadLiteral(LEVEL_BITS);
-		if (pSh->is_valid_seq_level_idx(seq_level_idx)) return 0;
-		BitstreamLevel bl;
-		bl.major = (seq_level_idx >> LEVEL_MINOR_BITS) + LEVEL_MAJOR_MIN;
-		bl.minor = seq_level_idx & ((1 << LEVEL_MINOR_BITS) - 1);
-		pSh->ShWriteSeqLevelIdx(0, bl);
-		pSh->ShWriteSeqTier(0, 0);
-		pSh->ShWriteDecoderModelPresentForThisOp(0, 0);
-		pSh->ShWriteInitialDisplayDelayPresentForThisOp(0, 0);
+		pSh->ShParserTimingInfoPresentFlag(0);
+		pSh->ShParserDecoderModelInfoPresentFlag(0);
+		pSh->ShParserInitialDisplayDelayPresentFlag(0);
+		pSh->ShParserOperatingPointsCntMinus1(0);
+		pSh->ShParserOperatingPointIdc(0, 0);
+		pSh->ShParserSeqLevelIdx(0, rb);
+		pSh->ShParserSeqTier(0, 0);
+		pSh->ShParserDecoderModelPresentForThisOp(0, 0);
+		pSh->ShParserInitialDisplayDelayPresentForThisOp(0, 0);
 	}
 	else {
-		pSh->ShWriteTimingInfoPresentFlag(rb->AomRbReadBit());
+		pSh->ShParserTimingInfoPresentFlag(rb->AomRbReadBit());
 		if(pSh->ShReadTimingInfoPresentFlag()) {
-			pSh->ShWriteTimingInfoHeader(rb); //decodeframe.c
-			pSh->ShWriteDecoderModelInfoPresentFlag(rb->AomRbReadBit());
+			pSh->ShParserTimingInfoHeader(rb); //decodeframe.c
+			pSh->ShParserDecoderModelInfoPresentFlag(rb->AomRbReadBit());
 
 			if (pSh->ShReadDecoderModelInfoPresentFlag())
-				pSh->ShWriteDecoderModelInfo(rb);
+				pSh->ShParserDecoderModelInfo(rb);
 		}
 		else {
-			pSh->ShWriteDecoderModelInfoPresentFlag(0);
+			pSh->ShParserDecoderModelInfoPresentFlag(0);
 		}
-	//	seq_params->display_model_info_present_flag = aom_rb_read_bit(rb);
-	//	seq_params->operating_points_cnt_minus_1 =
-	//		aom_rb_read_literal(rb, OP_POINTS_CNT_MINUS_1_BITS);
-	//	for (int i = 0; i < seq_params->operating_points_cnt_minus_1 + 1; i++) {
-	//		seq_params->operating_point_idc[i] =
-	//			aom_rb_read_literal(rb, OP_POINTS_IDC_BITS);
-	//		if (!read_bitstream_level(&seq_params->level[i], rb)) {
-	//			cm->error.error_code = AOM_CODEC_UNSUP_BITSTREAM;
-	//			return 0;
-	//		}
-	//		// This is the seq_level_idx[i] > 7 check in the spec. seq_level_idx 7
-	//		// is equivalent to level 3.3.
-	//		if (seq_params->level[i].major > 3)
-	//			seq_params->tier[i] = aom_rb_read_bit(rb);
-	//		else
-	//			seq_params->tier[i] = 0;
-	//		if (seq_params->decoder_model_info_present_flag) {
-	//			cm->op_params[i].decoder_model_param_present_flag = aom_rb_read_bit(rb);
-	//			if (cm->op_params[i].decoder_model_param_present_flag)
-	//				av1_read_op_parameters_info(cm, rb, i); //decodeframe.c
-	//		}
-	//		else {
-	//			cm->op_params[i].decoder_model_param_present_flag = 0;
-	//		}
-	//		if (cm->timing_info_present &&
-	//			(cm->timing_info.equal_picture_interval ||
-	//				cm->op_params[i].decoder_model_param_present_flag)) {
-	//			cm->op_params[i].bitrate = max_level_bitrate(
-	//				seq_params->profile,
-	//				major_minor_to_seq_level_idx(seq_params->level[i]), //onyxc_int.h
-	//				seq_params->tier[i]);
-	//			// Level with seq_level_idx = 31 returns a high "dummy" bitrate to pass
-	//			// the check
-	//			if (cm->op_params[i].bitrate == 0)
-	//				aom_internal_error(&cm->error, AOM_CODEC_UNSUP_BITSTREAM,
-	//					"AV1 does not support this combination of "
-	//					"profile, level, and tier.");
-	//			// Buffer size in bits/s is bitrate in bits/s * 1 s
-	//			cm->op_params[i].buffer_size = cm->op_params[i].bitrate;
-	//		}
-	//		if (cm->timing_info_present && cm->timing_info.equal_picture_interval &&
-	//			!cm->op_params[i].decoder_model_param_present_flag) {
-	//			// When the decoder_model_parameters are not sent for this op, set
-	//			// the default ones that can be used with the resource availability mode
-	//			cm->op_params[i].decoder_buffer_delay = 70000;
-	//			cm->op_params[i].encoder_buffer_delay = 20000;
-	//			cm->op_params[i].low_delay_mode_flag = 0;
-	//		}
+		pSh->ShParserDecoderModelInfoPresentFlag(rb->AomRbReadBit());
+		pSh->ShParserOperatingPointsCntMinus1(OP_POINTS_CNT_MINUS_1_BITS);
+		
+		for (int i = 0; i < pSh->ShReadOperatingPointsCntMinus1() + 1; i++) {
+			pSh->ShParserOperatingPointIdc(i, rb->AomRbReadLiteral(OP_POINTS_IDC_BITS));			
 
-	//		if (seq_params->display_model_info_present_flag) {
-	//			cm->op_params[i].display_model_param_present_flag = aom_rb_read_bit(rb);
-	//			if (cm->op_params[i].display_model_param_present_flag) {
-	//				cm->op_params[i].initial_display_delay =
-	//					aom_rb_read_literal(rb, 4) + 1;
-	//				if (cm->op_params[i].initial_display_delay > 10)
-	//					aom_internal_error(
-	//						&cm->error, AOM_CODEC_UNSUP_BITSTREAM,
-	//						"AV1 does not support more than 10 decoded frames delay");
-	//			}
-	//			else {
-	//				cm->op_params[i].initial_display_delay = 10;
-	//			}
-	//		}
-	//		else {
-	//			cm->op_params[i].display_model_param_present_flag = 0;
-	//			cm->op_params[i].initial_display_delay = 10;
-	//		}
-	//	}
-	//}
-	//// This decoder supports all levels.  Choose operating point provided by
-	//// external means
-	//int operating_point = pbi->operating_point;
-	//if (operating_point < 0 ||
-	//	operating_point > seq_params->operating_points_cnt_minus_1)
-	//	operating_point = 0;
-	//pbi->current_operating_point =
-	//	seq_params->operating_point_idc[operating_point];
-	//if (aom_get_num_layers_from_operating_point_idc( //obu.c
-	//	pbi->current_operating_point, &cm->number_spatial_layers,
-	//	&cm->number_temporal_layers) != AOM_CODEC_OK) {
-	//	cm->error.error_code = AOM_CODEC_ERROR;
-	//	return 0;
+			if (!pSh->ShParserSeqLevelIdx(i, rb)) {
+				return 0;
+			}
+			// This is the seq_level_idx[i] > 7 check in the spec. seq_level_idx 7
+			// is equivalent to level 3.3.
+			if(pSh->ShReadSeqLevelIdxMajor(i) > 3)
+				pSh->ShParserSeqTier(i, rb->AomRbReadBit());
+			else
+				pSh->ShParserSeqTier(i, 0);
+
+			if (pSh->ShReadDecoderModelInfoPresentFlag())
+			{
+				pSh->ShParserDecoderModelPresentForThisOp(i, rb->AomRbReadBit());
+				if (pSh->ShReadDecoderModelPresentForThisOp(i))
+					pSh->ShParserOperatingParametersInfo(i, rb);
+			}
+			else {
+				pSh->ShParserDecoderModelPresentForThisOp(i, 0);
+			}
+
+			if (pSh->ShReadInitialDisplayDelayPresentFlag())
+			{
+				pSh->ShParserInitialDisplayDelayPresentForThisOp(i, rb->AomRbReadBit());
+				if (pSh->ShReadInitialDisplayDelayPresentForThisOp(i))
+					pSh->ShParserInitialDisplayDelayMinus1(i, rb->AomRbReadLiteral(4));
+				else
+					pSh->ShParserInitialDisplayDelayMinus1(i, 9);
+			}
+			else
+			{
+				pSh->ShParserInitialDisplayDelayPresentForThisOp(i, 0);
+				pSh->ShParserInitialDisplayDelayMinus1(i, 9);
+			}
+		}
 	}
-
-	//av1_read_sequence_header(cm, rb, seq_params); //decodeframe.c
+	
+	av1_read_sequence_header(cm, rb, seq_params); //decodeframe.c
 
 	//av1_read_color_config(rb, pbi->allow_lowbitdepth, seq_params, &cm->error); //decodeframe.c
 	//if (!(seq_params->subsampling_x == 0 && seq_params->subsampling_y == 0) &&
