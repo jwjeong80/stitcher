@@ -23,7 +23,7 @@
 #include "av1_common.h"
 #include "bit_reader_c.h"
 #include "SequenceHeader.h"
-
+#include "FrameHeader.h"
 //typedef struct {
 //	size_t size;  // Size (1 or 2 bytes) of the OBU header (including the
 //				  // optional OBU extension header) in the bitstream.
@@ -137,9 +137,11 @@ public:
 	 aom_codec_err_t AomReadObuHeaderC(uint8_t *buffer, size_t buffer_length,
 		 size_t *consumed, ObuHeader *header, int is_annexb);
 
+	 uint32_t ReadFrameHeaderObu(CBitReader *rb);
 
 private:
 	CSequenceHeader      m_ShBuffer;
+	CFrameHeader         m_FhBuffer;
 	//ShManager            m_ShManager;                // Parameter Set Manager
 	COBUInfo             m_ObuInfo;                   // storage for slice header & segment data
 	//TComInputBitstream	m_SliceSegData;             // storage for slice segment data

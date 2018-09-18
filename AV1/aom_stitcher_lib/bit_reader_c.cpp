@@ -51,3 +51,14 @@ uint32_t CBitReader::AomRbReadUvlc() {
 	const uint32_t value = AomRbReadLiteral(leading_zeros);
 	return base + value;
 }
+
+
+int CBitReader::Av1CheckTrailingBits() {
+	// bit_offset is set to 0 (mod 8) when the reader is already byte aligned
+	int bits_before_alignment = 8 - m_bit_offset % 8;
+	int trailing = AomRbReadLiteral(bits_before_alignment);
+	if (trailing != (1 << (bits_before_alignment - 1))) {
+		return -1;
+	}
+	return 0;
+}

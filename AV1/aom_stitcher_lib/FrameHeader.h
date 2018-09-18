@@ -1,5 +1,5 @@
 #pragma once
-
+#include "bit_reader_c.h"
 
 #define NONE_FRAME -1
 #define INTRA_FRAME 0
@@ -15,8 +15,12 @@
 
 #define INTER_REFS_PER_FRAME (ALTREF_FRAME - LAST_FRAME + 1)
 
-class CFrameHeader
+
+class CFrameHeader : CBitReader
 {
+public:
+	uint32_t FhParserUncompressedHeader(CBitReader *rb);
+
 private:
 	int m_ShowExistingFrame;
 	int m_FrameToShowMapIdx;

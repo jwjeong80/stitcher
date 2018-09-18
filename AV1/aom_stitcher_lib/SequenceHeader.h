@@ -1,4 +1,5 @@
 ﻿#include <stdio.h>
+#include <assert.h>
 //#include "av1/decoder/obu.h"
 //#include "av1/common/enums.h"
 //#include "bit_reader.h"
@@ -43,6 +44,88 @@ typedef struct BitstreamLevel {
 
 #define OP_POINTS_CNT_MINUS_1_BITS 5
 #define OP_POINTS_IDC_BITS 12
+
+/*!\brief List of supported color primaries */
+typedef enum aom_color_primaries {
+	AOM_CICP_CP_RESERVED_0 = 0,  /**< For future use */
+	AOM_CICP_CP_BT_709 = 1,      /**< BT.709 */
+	AOM_CICP_CP_UNSPECIFIED = 2, /**< Unspecified */
+	AOM_CICP_CP_RESERVED_3 = 3,  /**< For future use */
+	AOM_CICP_CP_BT_470_M = 4,    /**< BT.470 System M (historical) */
+	AOM_CICP_CP_BT_470_B_G = 5,  /**< BT.470 System B, G (historical) */
+	AOM_CICP_CP_BT_601 = 6,      /**< BT.601 */
+	AOM_CICP_CP_SMPTE_240 = 7,   /**< SMPTE 240 */
+	AOM_CICP_CP_GENERIC_FILM =
+	8, /**< Generic film (color filters using illuminant C) */
+	AOM_CICP_CP_BT_2020 = 9,      /**< BT.2020, BT.2100 */
+	AOM_CICP_CP_XYZ = 10,         /**< SMPTE 428 (CIE 1921 XYZ) */
+	AOM_CICP_CP_SMPTE_431 = 11,   /**< SMPTE RP 431-2 */
+	AOM_CICP_CP_SMPTE_432 = 12,   /**< SMPTE EG 432-1  */
+	AOM_CICP_CP_RESERVED_13 = 13, /**< For future use (values 13 - 21)  */
+	AOM_CICP_CP_EBU_3213 = 22,    /**< EBU Tech. 3213-E  */
+	AOM_CICP_CP_RESERVED_23 = 23  /**< For future use (values 23 - 255)  */
+} aom_color_primaries_t;        /**< alias for enum aom_color_primaries */
+
+								/*!\brief List of supported transfer functions */
+typedef enum aom_transfer_characteristics {
+	AOM_CICP_TC_RESERVED_0 = 0,  /**< For future use */
+	AOM_CICP_TC_BT_709 = 1,      /**< BT.709 */
+	AOM_CICP_TC_UNSPECIFIED = 2, /**< Unspecified */
+	AOM_CICP_TC_RESERVED_3 = 3,  /**< For future use */
+	AOM_CICP_TC_BT_470_M = 4,    /**< BT.470 System M (historical)  */
+	AOM_CICP_TC_BT_470_B_G = 5,  /**< BT.470 System B, G (historical) */
+	AOM_CICP_TC_BT_601 = 6,      /**< BT.601 */
+	AOM_CICP_TC_SMPTE_240 = 7,   /**< SMPTE 240 M */
+	AOM_CICP_TC_LINEAR = 8,      /**< Linear */
+	AOM_CICP_TC_LOG_100 = 9,     /**< Logarithmic (100 : 1 range) */
+	AOM_CICP_TC_LOG_100_SQRT10 =
+	10,                     /**< Logarithmic (100 * Sqrt(10) : 1 range) */
+	AOM_CICP_TC_IEC_61966 = 11, /**< IEC 61966-2-4 */
+	AOM_CICP_TC_BT_1361 = 12,   /**< BT.1361 */
+	AOM_CICP_TC_SRGB = 13,      /**< sRGB or sYCC*/
+	AOM_CICP_TC_BT_2020_10_BIT = 14, /**< BT.2020 10-bit systems */
+	AOM_CICP_TC_BT_2020_12_BIT = 15, /**< BT.2020 12-bit systems */
+	AOM_CICP_TC_SMPTE_2084 = 16,     /**< SMPTE ST 2084, ITU BT.2100 PQ */
+	AOM_CICP_TC_SMPTE_428 = 17,      /**< SMPTE ST 428 */
+	AOM_CICP_TC_HLG = 18,            /**< BT.2100 HLG, ARIB STD-B67 */
+	AOM_CICP_TC_RESERVED_19 = 19     /**< For future use (values 19-255) */
+} aom_transfer_characteristics_t;  /**< alias for enum aom_transfer_function */
+
+								   /*!\brief List of supported matrix coefficients */
+typedef enum aom_matrix_coefficients {
+	AOM_CICP_MC_IDENTITY = 0,    /**< Identity matrix */
+	AOM_CICP_MC_BT_709 = 1,      /**< BT.709 */
+	AOM_CICP_MC_UNSPECIFIED = 2, /**< Unspecified */
+	AOM_CICP_MC_RESERVED_3 = 3,  /**< For future use */
+	AOM_CICP_MC_FCC = 4,         /**< US FCC 73.628 */
+	AOM_CICP_MC_BT_470_B_G = 5,  /**< BT.470 System B, G (historical) */
+	AOM_CICP_MC_BT_601 = 6,      /**< BT.601 */
+	AOM_CICP_MC_SMPTE_240 = 7,   /**< SMPTE 240 M */
+	AOM_CICP_MC_SMPTE_YCGCO = 8, /**< YCgCo */
+	AOM_CICP_MC_BT_2020_NCL =
+	9, /**< BT.2020 non-constant luminance, BT.2100 YCbCr  */
+	AOM_CICP_MC_BT_2020_CL = 10, /**< BT.2020 constant luminance */
+	AOM_CICP_MC_SMPTE_2085 = 11, /**< SMPTE ST 2085 YDzDx */
+	AOM_CICP_MC_CHROMAT_NCL =
+	12, /**< Chromaticity-derived non-constant luminance */
+	AOM_CICP_MC_CHROMAT_CL = 13, /**< Chromaticity-derived constant luminance */
+	AOM_CICP_MC_ICTCP = 14,      /**< BT.2100 ICtCp */
+	AOM_CICP_MC_RESERVED_15 = 15 /**< For future use (values 15-255)  */
+} aom_matrix_coefficients_t;
+
+typedef enum aom_bit_depth {
+	AOM_BITS_8 = 8,   /**<  8 bits */
+	AOM_BITS_10 = 10, /**< 10 bits */
+	AOM_BITS_12 = 12, /**< 12 bits */
+} aom_bit_depth_t;
+
+typedef enum aom_chroma_sample_position {
+	AOM_CSP_UNKNOWN = 0,          /**< Unknown */
+	AOM_CSP_VERTICAL = 1,         /**< Horizontally co-located with luma(0, 0)*/
+								  /**< sample, between two vertical samples */
+	AOM_CSP_COLOCATED = 2,        /**< Co-located with luma(0, 0) sample */
+	AOM_CSP_RESERVED = 3          /**< Reserved value */
+} aom_chroma_sample_position_t; /**< alias for enum aom_transfer_function */
 
 typedef struct timing_info {
 	uint32_t num_units_in_display_tick;
@@ -98,7 +181,7 @@ public:
 	void ShParserInitialDisplayDelayMinus1(int op_num, int initial_display_delay_minus_1) {
 		m_initial_display_delay_minus_1[op_num] = initial_display_delay_minus_1;
 	}
-
+	void ShParserFilmGrainParamsPresent(int film_grain_params_present) { m_film_grain_params_present = film_grain_params_present; }
 
 	int ShParserSeqLevelIdx(int idx, CBitReader *rb) {
 		const uint8_t seq_level_idx = rb->AomRbReadLiteral(LEVEL_BITS);
@@ -217,6 +300,112 @@ public:
 		m_enable_restoration = rb->AomRbReadBit();
 	}
 
+	void ShParserColorConfig(CBitReader *rb) {
+		
+		m_high_bitdepth = rb->AomRbReadBit();
+
+		if (m_seq_profile == PROFILE_2 && m_high_bitdepth) {
+			m_twelve_bit = rb->AomRbReadBit();
+			m_BitDepth = m_twelve_bit ? AOM_BITS_12 : AOM_BITS_10;
+		}
+		else if(m_seq_profile <= PROFILE_2){
+			m_BitDepth = m_twelve_bit ? AOM_BITS_10 : AOM_BITS_8;
+		}
+		else {
+			printf("Unsupported profile/bit-depth combination");
+		}
+
+		if (m_seq_profile == PROFILE_1)
+			m_mono_chrome = 0;
+		else
+			m_mono_chrome = rb->AomRbReadBit();
+
+		m_NumPlanes = m_mono_chrome ? 1 : 3;
+		m_color_description_present_flag = rb->AomRbReadBit();
+
+		if (m_color_description_present_flag) {
+			m_color_primaries = rb->AomRbReadLiteral(8);
+			m_transfer_characteristics = rb->AomRbReadLiteral(8);
+			m_matrix_coefficients = rb->AomRbReadLiteral(8);
+		}
+		else {
+			m_color_primaries = AOM_CICP_CP_UNSPECIFIED;
+			m_transfer_characteristics = AOM_CICP_TC_UNSPECIFIED;
+			m_matrix_coefficients = AOM_CICP_MC_UNSPECIFIED;
+		}
+
+		if (m_mono_chrome) {
+			// [16,235] (including xvycc) vs [0,255] range
+			m_color_range = rb->AomRbReadBit();
+			m_subsampling_y = m_subsampling_x = 1;
+			m_chroma_sample_position = AOM_CSP_UNKNOWN;
+			m_separate_uv_delta_q = 0;
+			return;
+		}
+		else if (m_color_primaries == AOM_CICP_CP_BT_709 &&
+			m_transfer_characteristics == AOM_CICP_TC_SRGB &&
+			m_matrix_coefficients == AOM_CICP_MC_IDENTITY) {
+			// It would be good to remove this dependency.
+			m_subsampling_y = m_subsampling_x = 0;
+			m_color_range = 1;  // assume full color-range
+			if (!(m_seq_profile == PROFILE_1 || 
+				(m_seq_profile == PROFILE_2 && m_seq_profile == AOM_BITS_12))) {
+				 printf("sRGB colorspace not compatible with specified profile \n");
+			}
+		}
+		else {
+			// [16,235] (including xvycc) vs [0,255] range
+			m_color_range = rb->AomRbReadBit();
+			if (m_seq_profile == PROFILE_0) {
+				// 420 only
+				m_subsampling_x = m_subsampling_y = 1;
+			}
+			else if (m_seq_profile == PROFILE_1) {
+				// 444 only
+				m_subsampling_x = m_subsampling_y = 0;
+			}
+			else {
+				assert(m_seq_profile == PROFILE_2);
+				
+				if (m_BitDepth == AOM_BITS_12) {
+					m_subsampling_x = rb->AomRbReadBit();
+					if (m_subsampling_x)
+						m_subsampling_y = rb->AomRbReadBit(); // 422 or 420
+					else
+						m_subsampling_y = 0;  // 444
+				}
+				else {
+					// 422
+					m_subsampling_x = 1;
+					m_subsampling_y = 0;
+				}
+			}
+			if (m_matrix_coefficients == AOM_CICP_MC_IDENTITY &&
+				(m_subsampling_x || m_subsampling_y)) {
+				printf("Identity CICP Matrix incompatible with non 4:4:4 color sampling\n");
+			}
+			if (m_subsampling_x && m_subsampling_y) {
+				m_chroma_sample_position = rb->AomRbReadLiteral(2);
+			}
+		}
+		m_separate_uv_delta_q = rb->AomRbReadBit();
+
+
+		if (!(m_subsampling_x == 0 && m_subsampling_y == 0) &&
+			!(m_subsampling_x == 1 && m_subsampling_y == 1) &&
+			!(m_subsampling_x == 1 && m_subsampling_y == 0)) {
+			printf("Only 4:4:4, 4:2:2 and 4:2:0 are currently supported, "
+				"%d %d subsampling is not supported.\n",
+				m_subsampling_x, m_subsampling_y);
+		}
+
+	}
+
+	//int AreSeqHeadersConsistent(const SequenceHeader *seq_params_old,
+	//	const SequenceHeader *seq_params_new) {
+	//	return !memcmp(seq_params_old, seq_params_new, sizeof(CSequenceHeader));
+	//}
+
 
 	BITSTREAM_PROFILE ShReadProfile() { return m_seq_profile; }
 	int AvReadStillPicture() { return m_still_picture; }
@@ -290,20 +479,22 @@ private:
 	int m_enable_restoration;
 
 	//color_config()
-	int m_HighBitdepth;
-	int m_TwelveBit;
-	int m_MonoChrome;
-	int m_ColorDescriptionPresentFlag;
-	int m_ColorPrimaries;
-	int m_TransferCharacteristics;
-	int m_MatrixCoefficients;
-	int m_ColorRange;
-	int m_SubsamplingX;
-	int m_SubsamplingY;
-	int m_ChromaSamplePosition;
-	int m_SeparateUvDeltaQ;
-	
-	int m_FilmGrainParamsPresent;
+	int m_high_bitdepth;
+	int m_twelve_bit;
+	int m_mono_chrome;
+	int m_color_description_present_flag;
+	int m_color_primaries;
+	int m_transfer_characteristics;
+	int m_matrix_coefficients;
+	int m_color_range;
+	int m_subsampling_x;
+	int m_subsampling_y;
+	int m_chroma_sample_position;
+	int m_separate_uv_delta_q;
+	int m_BitDepth;
+	int m_NumPlanes;
+
+	int m_film_grain_params_present;
 };
 
 class ShManager

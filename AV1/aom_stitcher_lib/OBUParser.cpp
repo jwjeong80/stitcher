@@ -135,7 +135,7 @@ aom_codec_err_t COBUParser::ReadObuHeaderC(CBitReader *rb,
 	int is_annexb, ObuHeader *header) {
 	if (!rb || !header) return AOM_CODEC_INVALID_PARAM;
 
-	const ptrdiff_t bit_buffer_byte_length = rb->m_bit_buffer_end - rb->m_bit_buffer;
+	const ptrdiff_t bit_buffer_byte_length = rb->AomRbReadBitBufferEnd() - rb->AomRbReadBitBuffer();
 	if (bit_buffer_byte_length < 1) return AOM_CODEC_CORRUPT_FRAME;
 
 	header->size = 1;
@@ -475,7 +475,7 @@ bool COBUParser::DecodeOneOBUC(uint8_t *pBitStream, uint32_t uiBitstreamSize, bo
 		switch (obu_header.type) {
 		case OBU_TEMPORAL_DELIMITER:
 			decoded_payload_size = ReadTemporalDelimiterObu();
-			//pbi->seen_frame_header = 0;
+			m_SeenFrameHeader = 0;
 			break;
 			case OBU_SEQUENCE_HEADER:
 				if (!seq_header_received) {
@@ -493,9 +493,41 @@ bool COBUParser::DecodeOneOBUC(uint8_t *pBitStream, uint32_t uiBitstreamSize, bo
 					decoded_payload_size = seq_header_size;
 				}
 				break;
-			//case OBU_FRAME_HEADER:
-			//case OBU_REDUNDANT_FRAME_HEADER:
-			//case OBU_FRAME:
+			case OBU_FRAME_HEADER:
+			case OBU_REDUNDANT_FRAME_HEADER:
+			case OBU_FRAME:
+				// Only decode first frame header received
+				if (m_SeenFrameHeader /*||
+					(cm->large_scale_tile && !pbi->camera_frame_header_ready)*/) {
+					frame_header_size = read_frame_header_obu(               //obu.c
+						pbi, &rb, data, p_data_end, obu_header.type != OBU_FRAME);
+					m_seen_frame_header = 1;
+					if (!pbi->ext_tile_debug && cm->large_scale_tile)
+						pbi->camera_frame_header_ready = 1;
+				}
+				else {
+					// TODO(wtc): Verify that the frame_header_obu is identical to the
+					// original frame_header_obu. For now just skip frame_header_size
+					// bytes in the bit buffer.
+					if (frame_header_size > payload_size) {
+						cm->error.error_code = AOM_CODEC_CORRUPT_FRAME;
+						return -1;
+					}
+					assert(rb.bit_offset == 0);
+					rb.bit_offset = 8 * frame_header_size;
+				}
+				//decoded_payload_size = frame_header_size;
+				//pbi->frame_header_size = frame_header_size;
+
+				//if (cm->show_existing_frame) {
+				//	if (obu_header.type == OBU_FRAME) {
+				//		cm->error.error_code = AOM_CODEC_UNSUP_BITSTREAM;
+				//		return -1;
+				//	}
+				//	frame_decoding_finished = 1;
+				//	pbi->seen_frame_header = 0;
+				//	break;
+				//}
 
 		default:
 			// Skip unrecognized OBUs
@@ -532,7 +564,7 @@ uint32_t COBUParser::ReadSequenceHeaderObu(CBitReader *rb)
 	//SequenceHeader sh = cm->seq_params;
 	//SequenceHeader *const seq_params = &sh;
 
-	const uint32_t saved_bit_offset = rb->m_bit_offset;
+	const uint32_t saved_bit_offset = rb->AomRbReadBitOffset();
 	CSequenceHeader *pSh = &m_ShBuffer;
 
 	pSh->ShParserProfile(BITSTREAM_PROFILE(rb->AomRbReadLiteral(PROFILE_BITS)));
@@ -616,37 +648,25 @@ uint32_t COBUParser::ReadSequenceHeaderObu(CBitReader *rb)
 	}
 
 	pSh->ShParserSequenceInfo(rb);
+	pSh->ShParserColorConfig(rb);
 
-	//av1_read_color_config(rb, pbi->allow_lowbitdepth, seq_params, &cm->error); //decodeframe.c
-	//if (!(seq_params->subsampling_x == 0 && seq_params->subsampling_y == 0) &&
-	//	!(seq_params->subsampling_x == 1 && seq_params->subsampling_y == 1) &&
-	//	!(seq_params->subsampling_x == 1 && seq_params->subsampling_y == 0)) {
-	//	aom_internal_error(&cm->error, AOM_CODEC_UNSUP_BITSTREAM,
-	//		"Only 4:4:4, 4:2:2 and 4:2:0 are currently supported, "
-	//		"%d %d subsampling is not supported.\n",
-	//		seq_params->subsampling_x, seq_params->subsampling_y);
-	//}
+	pSh->ShParserFilmGrainParamsPresent(rb->AomRbReadBit());
 
-	//seq_params->film_grain_params_present = aom_rb_read_bit(rb);
+	if (rb->Av1CheckTrailingBits() != 0) {
+		return 0;
+	}
 
-	//if (av1_check_trailing_bits(pbi, rb) != 0) { //decoderframe.c
-	//  // cm->error.error_code is already set.
-	//	return 0;
-	//}
+	return ((rb->AomRbReadBitOffset() - saved_bit_offset + 7) >> 3);
+}
 
-	//// If a sequence header has been decoded before, we check if the new
-	//// one is consistent with the old one.
-	//if (pbi->sequence_header_ready) {
-	//	if (!are_seq_headers_consistent(&cm->seq_params, seq_params)) { //obu.c
-	//		aom_internal_error(&cm->error, AOM_CODEC_UNSUP_BITSTREAM,
-	//			"Inconsistent sequence headers received.");
-	//	}
-	//}
 
-	//cm->seq_params = *seq_params;
-	//pbi->sequence_header_ready = 1;
+uint32_t COBUParser::ReadFrameHeaderObu(CBitReader *rb, const uint8_t *data, const uint8_t **p_data_end, int trainiling_bits_present)
+{
 
-	//return ((rb->bit_offset - saved_bit_offset + 7) >> 3);
+	const uint32_t saved_bit_offset = rb->AomRbReadBitOffset();
+	CFrameHeader *pFh = &m_FhBuffer;
+	
+	pFh->FhParserUncompressedHeader(rb);
 
 	return 1;
 }
