@@ -427,6 +427,14 @@ public:
 	int ShReadSeqForceIntegerMv() { return m_seq_force_integer_mv; }
 	int ShReadOrderHintBits() { return m_OrderHintBits; }
 	int ShReadEnableOrderHint() { return m_enable_order_hint; }
+
+	int ShReadFrameWidthBitsMinus1() { return m_frame_width_bits_minus_1; }
+	int ShReadFrameHeightBitsMinus1() { return m_frame_height_bits_minus_1; }
+	int ShReadMaxFrameWidthMinus1() { return m_max_frame_width_minus_1; }
+	int ShReadMaxFrameHeightMinus1() { return m_max_frame_height_minus_1; }
+
+	int ShReadEnableSuperres() { return m_enable_superres; }
+
 	
 private:
 	BITSTREAM_PROFILE m_seq_profile;

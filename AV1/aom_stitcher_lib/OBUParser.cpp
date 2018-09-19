@@ -843,11 +843,72 @@ uint32_t COBUParser::ReadFrameHeaderObu(CBitReader *rb, const uint8_t *data, int
 	}
 
 	if (frame_type == KEY_FRAME) {
-		
-			if (m_frame_size_override_flag) {
-				int n = m_frame_width_bits_minus_1 + 1;
+		pFh->FhParserFrameSize(
+			pSh->ShReadFrameWidthBitsMinus1(),
+			pSh->ShReadFrameHeightBitsMinus1(),
+			pSh->ShReadMaxFrameWidthMinus1(),
+			pSh->ShReadMaxFrameHeightMinus1(),
+			pSh->ShReadEnableSuperres(), rb);
+		pFh->FhRenderSize(rb);
 
+		if (pFh->FhReadAllowScreenContentTools() &&
+			pFh->FhReadUpscaledWidth() == pFh->FhReadFrameWidth()) {
+			pFh->FhParserAllowIntrabc(rb->AomRbReadBit());
+		}
+	}
+	else {
+		if (frame_type == INTRA_ONLY_FRAME) {
+			pFh->FhParserFrameSize(
+				pSh->ShReadFrameWidthBitsMinus1(),
+				pSh->ShReadFrameHeightBitsMinus1(),
+				pSh->ShReadMaxFrameWidthMinus1(),
+				pSh->ShReadMaxFrameHeightMinus1(),
+				pSh->ShReadEnableSuperres(), rb);
+			pFh->FhRenderSize(rb);
+
+			if (pFh->FhReadAllowScreenContentTools() &&
+				pFh->FhReadUpscaledWidth() == pFh->FhReadFrameWidth()) {
+				pFh->FhParserAllowIntrabc(rb->AomRbReadBit());
 			}
+		}
+		else {
+			int frame_refs_short_signaling;
+			if (!pSh->ShReadEnableOrderHint()) {
+				frame_refs_short_signaling = 0;
+				pFh->FhParserFrameRefsShortSignaling(frame_refs_short_signaling);
+			}
+			else{
+				frame_refs_short_signaling = rb->AomRbReadBit();
+				pFh->FhParserFrameRefsShortSignaling(frame_refs_short_signaling);
+
+				if (frame_refs_short_signaling) {
+					pFh->FhParserLastFrameIdx(rb->AomRbReadLiteral(3));
+					pFh->FhParserGoldFrameIdx(rb->AomRbReadLiteral(3));
+					//set_frame_refs()
+				}
+			}
+
+			for (int i = 0; i < INTER_REFS_PER_FRAME; i++) {
+				if (!frame_refs_short_signaling)
+					pFh->FhParserRefFramesIdx(i, rb->AomRbReadLiteral(3));
+				if (pSh->ShReadFrameIdNumbersPresentFlag()) {
+					int n = pSh->ShReadDeltaFrameIdLengthMinus2() + 2;
+					int delta_frame_id_minus_1 = rb->AomRbReadLiteral(n);
+					pFh->FhParserDeltaFrameIdMinus1(delta_frame_id_minus_1);
+					int DeltaFrameId = delta_frame_id_minus_1 + 1;
+					int expectedFrameId = ((pFh->FhReadCurrentFrameId() + (1 << idLen) -
+						DeltaFrameId) % (1 << idLen));
+					pFh->FhParserExpectedFrameId(i, expectedFrameId);
+				}
+			}
+
+			//if (frame_size_override_flag && !error_resilient_mode) {
+			//	frame_size_with_refs()
+			//}
+			//else {
+			//	frame_size()
+			//		render_size()
+			//}
 		}
 
 	}

@@ -95,8 +95,82 @@ public:
 		}
 	}
 
+	void FhParserFrameSize(int frame_width_bits_minus_1, int frame_height_bits_minus_1,
+		int max_frame_width_minus_1, int max_frame_height_minus_1, 
+		int enable_superres, CBitReader *rb) {
+		
+		if (m_frame_size_override_flag) {
+			int n = frame_width_bits_minus_1 + 1;
+			m_frame_width_minus_1 = rb->AomRbReadLiteral(n);
+			n = frame_height_bits_minus_1 + 1;
+			m_frame_height_minus_1 = rb->AomRbReadLiteral(n);
+			m_FrameWidth = m_frame_width_minus_1 + 1;
+			m_FrameHeight = m_frame_height_minus_1 + 1;
+		}
+		else {
+			m_FrameWidth = max_frame_width_minus_1 + 1;
+			m_FrameHeight = max_frame_height_minus_1 + 1;
+		}
 
+		FhParserSuperresParams(enable_superres, rb);
+		FhComputeImageSize();
+	}
 
+	void FhParserSuperresParams(int enable_superres, CBitReader *rb) {
+		if (enable_superres)
+			m_use_superres = rb->AomRbReadBit();
+		else
+			m_use_superres = 0;
+
+		if (m_use_superres) {
+			m_coded_denom = rb->AomRbReadLiteral(SUPERRES_DENOM_BITS);
+			m_SuperresDenom = m_coded_denom + SUPERRES_DENOM_MIN;
+		}
+		else {
+			m_SuperresDenom = SUPERRES_NUM;
+		}
+		m_UpscaledWidth = m_FrameWidth;
+		m_FrameWidth = (m_UpscaledWidth * SUPERRES_NUM + (m_SuperresDenom / 2)) / m_SuperresDenom;
+	}
+
+	void FhComputeImageSize(void) {
+		m_MiCols = 2 * ((m_FrameWidth + 7) >> 3);
+		m_MiRows = 2 * ((m_FrameHeight + 7) >> 3);
+	}
+
+	void FhRenderSize(CBitReader *rb) {
+		m_render_and_frame_size_different = rb->AomRbReadBit();
+
+		if (m_render_and_frame_size_different == 1) {
+			m_render_width_minus_1 = rb->AomRbReadLiteral(16);
+			m_render_height_minus_1 = rb->AomRbReadLiteral(16);
+			m_RenderWidth = m_render_width_minus_1;
+			m_RenderHeight = m_render_height_minus_1;
+		}
+		else {
+			m_RenderWidth = m_UpscaledWidth;
+			m_RenderHeight = m_FrameHeight;
+		}
+	}
+		
+	void FhParserFrameRefsShortSignaling(int frame_refs_short_signaling) {
+		m_frame_refs_short_signaling = frame_refs_short_signaling;
+	}
+	void FhParserLastFrameIdx(int last_frame_idx) {
+		m_last_frame_idx = last_frame_idx;
+	}
+	void FhParserGoldFrameIdx(int gold_frame_idx) {
+		m_gold_frame_idx = gold_frame_idx;
+	}
+	void FhParserRefFramesIdx(int idx, int ref_frame_idx) { 
+		m_ref_frame_idx[idx] = ref_frame_idx; }
+	void FhParserDeltaFrameIdMinus1(int delta_frame_id_minus_1) {
+		m_delta_frame_id_minus_1 = delta_frame_id_minus_1;
+	}
+	void FhParserExpectedFrameId(int idx, int expectedFrameId) {
+		m_expectedFrameId[idx] = expectedFrameId;
+	}
+	
 
 	int FhReadShowExistingFrame() { return m_show_existing_frame; }
 	int FhReadShowFrame() { return m_show_frame; }
@@ -105,6 +179,11 @@ public:
 	int FhReadOrderHint() { return m_order_hint; }
 	int FhReadErrorResilientMode() { return m_error_resilient_mode; }
 	int FhReadRefreshFrameFlags() { return m_refresh_frame_flags; }
+
+	int FhReadUpscaledWidth() { return m_UpscaledWidth; }
+	int FhReadFrameWidth() { return m_FrameWidth; }
+
+	int FhReadCurrentFrameId() { return m_current_frame_id; }
 
 private:
 	int m_show_existing_frame;
@@ -138,24 +217,23 @@ private:
 	int m_allow_intrabc;
 
 	//frame_size()
-	int m_FrameWidthMinus1;
-	int m_FrameHeightMinus1;
+	int m_frame_width_minus_1;
+	int m_frame_height_minus_1;
 
 	//superres_params()
-	int m_UseSuperres;
-	int m_CodedDenom;
+	int m_use_superres;
+	int m_coded_denom;
 
 	//render_size( )
-	int m_RenderAndFrameSizeDifferent;
-	int m_RenderWidthMinus1;
-	int m_RenderHeightMinus1;
+	int m_render_and_frame_size_different;
+	int m_render_width_minus_1;
+	int m_render_height_minus_1;
 
-
-	int m_FrameRefsShortSignaling;
-	int m_LastFrameIdx;
-	int m_GoldFrameIdx;
-	int m_RefFrameIdx[INTER_REFS_PER_FRAME];
-	int m_DeltaFrameIdMinus1;
+	int m_frame_refs_short_signaling;
+	int m_last_frame_idx;
+	int m_gold_frame_idx;
+	int m_ref_frame_idx[INTER_REFS_PER_FRAME];
+	int m_delta_frame_id_minus_1;
 
 	//frame_size_with_refs( )
 	int m_FoundRef;
@@ -224,6 +302,15 @@ private:
 
 	int m_OrderHints[INTER_REFS_PER_FRAME];
 
-
 	int m_PrevFrameID;
+	int m_FrameWidth;
+	int m_FrameHeight;
+	int m_SuperresDenom;
+	int m_UpscaledWidth;
+	int m_RenderWidth;
+	int m_RenderHeight;
+	int m_expectedFrameId[INTER_REFS_PER_FRAME];
+
+	int m_MiCols;
+	int m_MiRows;
 };
