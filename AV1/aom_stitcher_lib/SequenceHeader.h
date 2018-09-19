@@ -5,16 +5,10 @@
 //#include "bit_reader.h"
 //#include "av1/common/timing.h"
 #include "bit_reader_c.h"
+#include "Define.h"
 //#include "av1_common.h"
 ///////////////////////////////////////////////////////////////////////////////
-#define MAX_NUM_TEMPORAL_LAYERS 8
-#define MAX_NUM_SPATIAL_LAYERS 4
-/* clang-format off */
-// clang-format seems to think this is a pointer dereference and not a
-// multiplication.
-#define MAX_NUM_OPERATING_POINTS \
-  MAX_NUM_TEMPORAL_LAYERS * MAX_NUM_SPATIAL_LAYERS
-#define PROFILE_BITS 3
+
 // The following three profiles are currently defined.
 // Profile 0.  8-bit and 10-bit 4:2:0 and 4:0:0 only.
 // Profile 1.  8-bit and 10-bit 4:4:4
@@ -33,17 +27,6 @@ typedef struct BitstreamLevel {
 	uint8_t minor;
 } BitstreamLevel;
 
-#define LEVEL_MAJOR_BITS 3
-#define LEVEL_MINOR_BITS 2
-#define LEVEL_BITS (LEVEL_MAJOR_BITS + LEVEL_MINOR_BITS)
-
-#define LEVEL_MAJOR_MIN 2
-#define LEVEL_MAJOR_MAX ((1 << LEVEL_MAJOR_BITS) - 1 + LEVEL_MAJOR_MIN)
-#define LEVEL_MINOR_MIN 0
-#define LEVEL_MINOR_MAX ((1 << LEVEL_MINOR_BITS) - 1)
-
-#define OP_POINTS_CNT_MINUS_1_BITS 5
-#define OP_POINTS_IDC_BITS 12
 
 /*!\brief List of supported color primaries */
 typedef enum aom_color_primaries {
@@ -253,7 +236,7 @@ public:
 			m_enable_ref_frame_mvs = 0;
 			m_seq_force_screen_content_tools = 2;  // SELECT_SCREEN_CONTENT_TOOLS
 			m_seq_force_integer_mv = 2;            // SELECT_INTEGER_MV
-			m_order_hint_bits_minus_1 = -1;
+			m_OrderHintBits = 0;
 		}
 		else {
 			m_enable_interintra_compound = rb->AomRbReadBit();
@@ -289,10 +272,13 @@ public:
 				m_seq_force_integer_mv = 2;            // SELECT_INTEGER_MV
 			}
 
-			if (m_enable_order_hint)
+			if (m_enable_order_hint) {
 				m_order_hint_bits_minus_1 = rb->AomRbReadLiteral(3);
-			else
-				m_order_hint_bits_minus_1 = -1;
+				m_OrderHintBits = m_order_hint_bits_minus_1 + 1;
+			}
+			else {
+				m_OrderHintBits = 0;
+			}
 		}
 
 		m_enable_superres = rb->AomRbReadBit();
@@ -401,6 +387,8 @@ public:
 
 	}
 
+
+
 	//int AreSeqHeadersConsistent(const SequenceHeader *seq_params_old,
 	//	const SequenceHeader *seq_params_new) {
 	//	return !memcmp(seq_params_old, seq_params_new, sizeof(CSequenceHeader));
@@ -420,6 +408,12 @@ public:
 	int ShReadDecoderModelPresentForThisOp(int idx) { return m_op_params[idx].decoder_model_present_for_this_op; }
 	int ShReadInitialDisplayDelayPresentForThisOp(int idx) { return m_op_params[idx].initial_display_delay_present_for_this_op; }
 
+	int ShReadFrameIdNumbersPresentFlag() { return m_frame_id_numbers_present_flag; }
+	int ShReadAdditionalFrameIdLengthMinus1() { return m_additional_frame_id_length_minus_1; }
+	int ShReadDeltaFrameIdLengthMinus2() { return m_delta_frame_id_length_minus_2; }
+	int ShReadEqualPictureInterval() { return m_timing_info.equal_picture_interval; }
+	int ShReadSeqForceScreenContentTools() { return m_seq_force_screen_content_tools; }
+
 	int ShReadSeqLevelIdxMajor(int idx) {
 		return m_seq_level_idx[idx].major;
 	}	
@@ -427,9 +421,13 @@ public:
 		return m_seq_level_idx[idx].minor;
 	}
 
-
+	decoder_model_info_t ShReadDecoderModelInfo() { return m_decoder_model_info; }
 	
-
+	int ShReadFilmGrainParamsPresent() { return m_film_grain_params_present; }
+	int ShReadSeqForceIntegerMv() { return m_seq_force_integer_mv; }
+	int ShReadOrderHintBits() { return m_OrderHintBits; }
+	int ShReadEnableOrderHint() { return m_enable_order_hint; }
+	
 private:
 	BITSTREAM_PROFILE m_seq_profile;
 	int m_still_picture;
@@ -491,10 +489,12 @@ private:
 	int m_subsampling_y;
 	int m_chroma_sample_position;
 	int m_separate_uv_delta_q;
+	int m_film_grain_params_present;
+
 	int m_BitDepth;
 	int m_NumPlanes;
+	int m_OrderHintBits;
 
-	int m_film_grain_params_present;
 };
 
 class ShManager

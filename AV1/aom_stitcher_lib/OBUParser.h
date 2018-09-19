@@ -137,8 +137,8 @@ public:
 	 aom_codec_err_t AomReadObuHeaderC(uint8_t *buffer, size_t buffer_length,
 		 size_t *consumed, ObuHeader *header, int is_annexb);
 
-	 uint32_t ReadFrameHeaderObu(CBitReader *rb);
-
+	 uint32_t ReadFrameHeaderObu(CBitReader *rb, const uint8_t *data, int trainiling_bits_present);
+	 
 private:
 	CSequenceHeader      m_ShBuffer;
 	CFrameHeader         m_FhBuffer;
@@ -155,6 +155,6 @@ private:
 	//CSEIMessages        m_SEIs;                     ///< List of SEI messages that have been received before the first slice and between slices
 
 	//Bool                m_bFirstSliceInBitstream;   // 비트스트림 중간에 EOS를 포함할 수도 있는 전체 비트스트림
-
+	int                   m_SeenFrameHeader;
 protected:
 };

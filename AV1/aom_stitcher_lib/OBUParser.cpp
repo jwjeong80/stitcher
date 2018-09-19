@@ -497,24 +497,24 @@ bool COBUParser::DecodeOneOBUC(uint8_t *pBitStream, uint32_t uiBitstreamSize, bo
 			case OBU_REDUNDANT_FRAME_HEADER:
 			case OBU_FRAME:
 				// Only decode first frame header received
-				if (m_SeenFrameHeader /*||
+				if (!m_SeenFrameHeader /*||
 					(cm->large_scale_tile && !pbi->camera_frame_header_ready)*/) {
-					frame_header_size = read_frame_header_obu(               //obu.c
-						pbi, &rb, data, p_data_end, obu_header.type != OBU_FRAME);
-					m_seen_frame_header = 1;
-					if (!pbi->ext_tile_debug && cm->large_scale_tile)
-						pbi->camera_frame_header_ready = 1;
+					frame_header_size = ReadFrameHeaderObu(               //obu.c
+						&rb, data, obu_header.type != OBU_FRAME);
+					m_SeenFrameHeader = 1;
+					//if (!pbi->ext_tile_debug && cm->large_scale_tile)
+					//	pbi->camera_frame_header_ready = 1;
 				}
 				else {
-					// TODO(wtc): Verify that the frame_header_obu is identical to the
-					// original frame_header_obu. For now just skip frame_header_size
-					// bytes in the bit buffer.
-					if (frame_header_size > payload_size) {
-						cm->error.error_code = AOM_CODEC_CORRUPT_FRAME;
-						return -1;
-					}
-					assert(rb.bit_offset == 0);
-					rb.bit_offset = 8 * frame_header_size;
+					//// TODO(wtc): Verify that the frame_header_obu is identical to the
+					//// original frame_header_obu. For now just skip frame_header_size
+					//// bytes in the bit buffer.
+					//if (frame_header_size > payload_size) {
+					//	cm->error.error_code = AOM_CODEC_CORRUPT_FRAME;
+					//	return -1;
+					//}
+					//assert(rb.bit_offset == 0);
+					//rb.bit_offset = 8 * frame_header_size;
 				}
 				//decoded_payload_size = frame_header_size;
 				//pbi->frame_header_size = frame_header_size;
@@ -660,13 +660,204 @@ uint32_t COBUParser::ReadSequenceHeaderObu(CBitReader *rb)
 }
 
 
-uint32_t COBUParser::ReadFrameHeaderObu(CBitReader *rb, const uint8_t *data, const uint8_t **p_data_end, int trainiling_bits_present)
+uint32_t COBUParser::ReadFrameHeaderObu(CBitReader *rb, const uint8_t *data, int trainiling_bits_present)
 {
 
 	const uint32_t saved_bit_offset = rb->AomRbReadBitOffset();
+	CSequenceHeader *pSh = &m_ShBuffer;
 	CFrameHeader *pFh = &m_FhBuffer;
+	ObuHeader obu_header;
+
+	int idLen = 0;
+	int FrameIsIntra = 1;
+	FRAME_TYPE frame_type;
+	int show_frame;
+
+	if (pSh->ShReadFrameIdNumbersPresentFlag()) {
+		idLen = pSh->ShReadAdditionalFrameIdLengthMinus1() +
+			pSh->ShReadDeltaFrameIdLengthMinus2() + 3;
+	}
+	int allFrames = (1 << NUM_REF_FRAMES) - 1;
+
+	if (pSh->ShReadReducedStillPictureHdr()) {
+		pFh->FhParserShowExistingFrame(0);
+		frame_type = KEY_FRAME;
+		pFh->FhParserFrameType(frame_type);
+		show_frame = 1;
+		pFh->FhParserShowFrame(1);		
+		pFh->FhParserShowableFrame(0);
+	}
+	else
+	{
+		pFh->FhParserShowExistingFrame(rb->AomRbReadBit());
+
+		if (pFh->FhReadShowExistingFrame() == 1)
+		{
+			pFh->FhParserFrameToShowMapIdx(rb->AomRbReadLiteral(3));
+
+			if (pSh->ShReadDecoderModelInfoPresentFlag() && !pSh->ShReadEqualPictureInterval()) {
+				pFh->FhParserTemporalPointInfo(pSh->ShReadDecoderModelInfo().frame_presentation_time_length_minus_1, rb);
+			}
+			pFh->FhParserRefreshFrameFlags(0);
+
+			if (pSh->ShReadFrameIdNumbersPresentFlag()) {
+				pFh->FhParserDisplayFrameId(rb->AomRbReadLiteral(idLen));
+			}
+			frame_type = KEY_FRAME; /*frame_type = RefFrameType[ frame_to_show_map_idx ]*/
+			pFh->FhParserFrameType(frame_type);
+
+			if (frame_type == KEY_FRAME) {
+				pFh->FhParserRefreshFrameFlags(allFrames);
+			}
+
+			//if(pSh->ShReadFilmGrainParamsPresent())
+			//	load_grain_params(frame_to_show_map_idx)
+			return 0;
+		}
+
+		frame_type = (FRAME_TYPE)rb->AomRbReadLiteral(2);
+		pFh->FhParserFrameType(frame_type);
+		int FrameIsIntra = (frame_type == INTRA_ONLY_FRAME || frame_type == KEY_FRAME);
+
+		show_frame = rb->AomRbReadBit();
+		pFh->FhParserShowFrame(show_frame);
+
+		if (show_frame && pSh->ShReadDecoderModelInfoPresentFlag() && !pSh->ShReadEqualPictureInterval()) {
+			pFh->FhParserTemporalPointInfo(pSh->ShReadDecoderModelInfo().frame_presentation_time_length_minus_1, rb);
+		}
+
+		if (show_frame) {
+			pFh->FhParserShowableFrame(frame_type != KEY_FRAME);
+		}
+		else {
+			pFh->FhParserShowableFrame(rb->AomRbReadBit());
+		}
+
+		if (frame_type == SWITCH_FRAME || (frame_type == KEY_FRAME && show_frame)) {
+			pFh->FhParserErrorResilientMode(1);
+		}
+		else {
+			pFh->FhParserErrorResilientMode(rb->AomRbReadBit());
+		}
+	}
 	
-	pFh->FhParserUncompressedHeader(rb);
+	if (frame_type == KEY_FRAME && show_frame) {
+		pFh->FhSetRefValandOrderHint();
+	}
+
+	pFh->FhParserDisableCdfUpdate(rb->AomRbReadBit());
+
+	if (pSh->ShReadSeqForceScreenContentTools() == 2) {//SELECT_SCREEN_CONTENT_TOOLS
+		pFh->FhParserAllowScreenContentTools(rb->AomRbReadBit());
+	}
+	else {
+		pFh->FhParserAllowScreenContentTools(pSh->ShReadSeqForceScreenContentTools());
+	}
+
+	if (pFh->FhReadAllowScreenContentTools()) {
+		int seq_force_integer_mv = pSh->ShReadSeqForceIntegerMv();
+		if (seq_force_integer_mv == 2) {// SELECT_INTEGER_MV
+			pFh->FhParserForceIntegerMv(rb->AomRbReadBit());
+		}
+		else {
+			pFh->FhParserForceIntegerMv(seq_force_integer_mv);
+		}
+	}
+	else {
+		pFh->FhParserForceIntegerMv(0);
+	}
+
+	if(FrameIsIntra)
+		pFh->FhParserForceIntegerMv(1);
+
+
+	if (pSh->ShReadFrameIdNumbersPresentFlag()) {
+		int prev_frame_id = 0;
+		int have_prev_frame_id = /* !pbi->decoding_first_frame &&*/  !(frame_type == KEY_FRAME && show_frame);
+		if (have_prev_frame_id) {
+			pFh->FhSetPrevFrameID();
+		}
+		pFh->FhParserCurrentFrameId(rb->AomRbReadLiteral(idLen));
+		pFh->FhSetMarkRefFrames(idLen, pSh->ShReadDeltaFrameIdLengthMinus2());
+	}
+	else {
+		pFh->FhParserCurrentFrameId(0);
+	}
+
+	if (frame_type == SWITCH_FRAME)
+		pFh->FhParserFrameSizeOverrideFlag(1);
+	else if(pSh->ShReadReducedStillPictureHdr())
+		pFh->FhParserFrameSizeOverrideFlag(0);
+	else
+		pFh->FhParserFrameSizeOverrideFlag(rb->AomRbReadBit());
+
+	int OrderHintBits = pSh->ShReadOrderHintBits();
+	pFh->FhParserOrderHint(rb->AomRbReadLiteral(OrderHintBits));
+	int OrderHint = pFh->FhReadOrderHint();
+
+	if (FrameIsIntra || pFh->FhReadErrorResilientMode()) {
+		pFh->FhParserPrimaryRefFrame(PRIMARY_REF_NONE);
+	}
+	else{
+		pFh->FhParserPrimaryRefFrame(rb->AomRbReadLiteral(3));
+	}
+
+	if (pSh->ShReadDecoderModelInfoPresentFlag())
+	{
+		int buffer_removal_time_present_flag = rb->AomRbReadBit();
+		pFh->FhParserBufferRemovalTimePresentFlag(buffer_removal_time_present_flag);
+
+		if (buffer_removal_time_present_flag) {
+			int operating_points_cnt_minus_1 = pSh->ShReadOperatingPointsCntMinus1();
+
+			int n = pSh->ShReadDecoderModelInfo().buffer_removal_time_length_minus_1 + 1;
+			for (int opNum = 0; opNum <= operating_points_cnt_minus_1; opNum++) {
+				if (pSh->ShReadDecoderModelPresentForThisOp(opNum)) {
+					int opPtIdc = pSh->ShReadOperatingPointIdc(opNum);
+
+					int inTemporalLayer = (opPtIdc >> obu_header.temporal_layer_id) & 1;
+					int	inSpatialLayer = (opPtIdc >> (obu_header.spatial_layer_id + 8)) & 1;
+						
+					if (opPtIdc == 0 || (inTemporalLayer && inSpatialLayer)) {
+						pFh->FhParserBufferRemovalTime(opNum, rb->AomRbReadLiteral(n));
+					}
+				}
+			}
+		}
+	}
+	pFh->FhParserAllowHighPrecisionMv(0);
+	pFh->FhParserUseRefFrameMvs(0);
+	pFh->FhParserAllowIntrabc(0);
+
+	if (frame_type == SWITCH_FRAME || (frame_type == KEY_FRAME && show_frame)) {
+		pFh->FhParserRefreshFrameFlags(allFrames);
+	}
+	else {
+		pFh->FhParserRefreshFrameFlags(rb->AomRbReadLiteral(8));
+	}
+
+	if (!FrameIsIntra || pFh->FhReadRefreshFrameFlags() != allFrames) {
+		if (pFh->FhReadErrorResilientMode() && pSh->ShReadEnableOrderHint()){
+			pFh->FhParseRefOrderHint(OrderHintBits, rb);
+		}
+	}
+
+	if (frame_type == KEY_FRAME) {
+		
+			if (m_frame_size_override_flag) {
+				int n = m_frame_width_bits_minus_1 + 1;
+
+			}
+		}
+
+	}
+
+	//		int prev_frame_id = 0;
+	//		int have_prev_frame_id = !pbi->decoding_first_frame &&
+	//			!(cm->frame_type == KEY_FRAME && cm->show_frame);
+	//		if (have_prev_frame_id) {
+	//			prev_frame_id = cm->current_frame_id;
+	//		}
 
 	return 1;
 }
