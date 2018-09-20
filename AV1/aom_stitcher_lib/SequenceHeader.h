@@ -434,7 +434,11 @@ public:
 	int ShReadMaxFrameHeightMinus1() { return m_max_frame_height_minus_1; }
 
 	int ShReadEnableSuperres() { return m_enable_superres; }
-
+	int ShReadEnableRefFrameMvs() { return m_enable_ref_frame_mvs; }
+	int ShReadUse128x128Superblock() { return m_use_128x128_superblock; }
+	int ShReadSeparateUvDeltaQ() { return m_separate_uv_delta_q; }
+	int ShReadNumPlanes() { return m_NumPlanes; }
+	int ShReadEnableCdef() { return m_enable_cdef; }
 	
 private:
 	BITSTREAM_PROFILE m_seq_profile;

@@ -902,23 +902,94 @@ uint32_t COBUParser::ReadFrameHeaderObu(CBitReader *rb, const uint8_t *data, int
 				}
 			}
 
-			//if (frame_size_override_flag && !error_resilient_mode) {
-			//	frame_size_with_refs()
-			//}
-			//else {
-			//	frame_size()
-			//		render_size()
-			//}
-		}
+			if (pFh->FhReadFrameSizeOverrideFlag() && !pFh->FhReadErrorResilientMode()) {
+				pFh->FhParserFrameSizeWithRefs(
+					pSh->ShReadFrameWidthBitsMinus1(),
+					pSh->ShReadFrameHeightBitsMinus1(),
+					pSh->ShReadMaxFrameWidthMinus1(),
+					pSh->ShReadMaxFrameHeightMinus1(),
+					pSh->ShReadEnableSuperres(), rb);
+			}
+			else {
+				pFh->FhParserFrameSize(
+					pSh->ShReadFrameWidthBitsMinus1(),
+					pSh->ShReadFrameHeightBitsMinus1(),
+					pSh->ShReadMaxFrameWidthMinus1(),
+					pSh->ShReadMaxFrameHeightMinus1(),
+					pSh->ShReadEnableSuperres(), rb);
+				pFh->FhRenderSize(rb);
+			}
 
+			pFh->FhParserForceIntegerMv(rb);
+			pFh->FhParserInterpolationFilter(rb);
+			pFh->FhParserIsMotionModeSwitchable(rb->AomRbReadBit());
+
+			if (pFh->FhReadErrorResilientMode() || pSh->ShReadEnableRefFrameMvs()) {
+				pFh->FhParserUseRefFrameMvs(0);
+			}
+			else {
+				pFh->FhParserUseRefFrameMvs(rb->AomRbReadBit());
+			}
+		}
 	}
 
-	//		int prev_frame_id = 0;
-	//		int have_prev_frame_id = !pbi->decoding_first_frame &&
-	//			!(cm->frame_type == KEY_FRAME && cm->show_frame);
-	//		if (have_prev_frame_id) {
-	//			prev_frame_id = cm->current_frame_id;
-	//		}
+	if (!FrameIsIntra){
+		//for (int i = 0; i < INTER_REFS_PER_FRAME; i++) {
+		//	int refFrame = LAST_FRAME + i;
+
+		//	int	hint = RefOrderHint[ref_frame_idx[i]]
+		//		OrderHints[refFrame] = hint
+		//		if (!enable_order_hint) {
+		//			RefFrameSignBias[refFrame] = 0
+		//		}
+		//		else {
+		//			RefFrameSignBias[refFrame] = get_relative_dist(hint, OrderHint) > 0
+		//		}
+		//}
+	}
+
+	if (pSh->ShReadReducedStillPictureHdr() || pFh->FhReadDisableCdfUpdate())
+		pFh->FhParserDisableFrameEndUpdateCdf(1);
+	else
+		pFh->FhParserDisableFrameEndUpdateCdf(rb->AomRbReadBit());
+
+	if (pFh->FhReadPrimaryRefFrame() == PRIMARY_REF_NONE) {
+		//init_non_coeff_cdfs()
+		//setup_past_independence()
+	}
+	else{
+		//load_cdfs( ref_frame_idx[ primary_ref_frame ] )
+		//load_previous( )
+	}
+
+	if (pFh->FhReadUseRefFrameMvs() == 1) {
+		//motion_field_estimation();
+	}
+
+	pFh->FhParserTileInfo(pSh->ShReadUse128x128Superblock(), rb);
+	pFh->FhParserQuantizationParams(pSh->ShReadNumPlanes(), pSh->ShReadSeparateUvDeltaQ(), rb);
+	pFh->FhParserSegmentationParams(rb);
+	pFh->FhParserDeltaQParams(rb);
+	pFh->FhParserDeltaLfParams(rb);
+
+	if (pFh->FhReadPrimaryRefFrame() == PRIMARY_REF_NONE) {
+		//init_coeff_cdfs(); //unimplemented
+	}
+	else {
+		//load_previous_segment_ids(); //unimplemented
+	}
+
+	pFh->FhSetCodedLossless(1);
+	for (int segmentId = 0; segmentId < MAX_SEGMENTS; segmentId++)
+	{
+		//unimplemented
+	}
+
+	int AllLossless = pFh->FhReadCodedLossless() && (pFh->FhReadFrameWidth() == pFh->FhReadUpscaledWidth());
+	pFh->FhSetAllLossless(AllLossless);
+	pFh->FhParserLoopFilterParams(pSh->ShReadNumPlanes(), rb);
+	pFh->FhParserCdefParams(pSh->ShReadNumPlanes(), pSh->ShReadEnableCdef(), rb);
+
 
 	return 1;
 }

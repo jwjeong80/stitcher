@@ -16,6 +16,12 @@
 
 #define INTER_REFS_PER_FRAME (ALTREF_FRAME - LAST_FRAME + 1)
 
+static int tile_log2(int blk_size, int target) {
+	int k;
+	for (k = 0; (blk_size << k) < target; k++) {
+	}
+	return k;
+}
 
 class CFrameHeader : CBitReader
 {
@@ -170,7 +176,412 @@ public:
 	void FhParserExpectedFrameId(int idx, int expectedFrameId) {
 		m_expectedFrameId[idx] = expectedFrameId;
 	}
+
+	void FhParserFrameSizeWithRefs(int frame_width_bits_minus_1, int frame_height_bits_minus_1,
+		int max_frame_width_minus_1, int max_frame_height_minus_1,
+		int enable_superres, CBitReader *rb) {
+		for (int i = 0; i < INTER_REFS_PER_FRAME; i++) {
+		
+			m_found_ref = rb->AomRbReadBit();
+
+			if (m_found_ref == 1) {
+				//UpscaledWidth = RefUpscaledWidth[ref_frame_idx[i]];
+				//FrameWidth = UpscaledWidth;
+				//FrameHeight = RefFrameHeight[ref_frame_idx[i]];
+				//RenderWidth = RefRenderWidth[ref_frame_idx[i]];
+				//RenderHeight = RefRenderHeight[ref_frame_idx[i]];
+				break;
+			}
+		}
+		if (m_found_ref == 0) {
+			FhParserFrameSize(frame_width_bits_minus_1, frame_height_bits_minus_1,
+				max_frame_width_minus_1, max_frame_height_minus_1,
+				enable_superres, rb);
+			FhRenderSize(rb);
+		}
+		else {
+			FhParserSuperresParams(enable_superres, rb);
+			FhComputeImageSize();
+		}
+	}
+
+	void FhParserForceIntegerMv(CBitReader *rb) {
+		if (m_force_integer_mv) {
+			m_allow_high_precision_mv = 0;
+		}
+		else {
+			m_allow_high_precision_mv = rb->AomRbReadBit();
+		}
+	}
+
+	void FhParserInterpolationFilter(CBitReader *rb) {
+		m_is_filter_switchable = rb->AomRbReadBit();
+
+		if (m_is_filter_switchable == 1) {
+			m_interpolation_filter = SWITCHABLE;
+		}
+		else {
+			m_interpolation_filter = rb->AomRbReadLiteral(2);
+		}
+	}
+
+	void FhParserIsMotionModeSwitchable(int is_motion_mode_switchable) {
+		m_is_motion_mode_switchable = is_motion_mode_switchable;
+	}
+	void FhParserDisableFrameEndUpdateCdf(int disable_frame_end_update_cdf) {
+		m_disable_frame_end_update_cdf = disable_frame_end_update_cdf;
+	}
+
+	void FhParserTileInfo(int use_128x128_superblock, CBitReader *rb) {
+		m_sbCols = use_128x128_superblock ? ((m_MiCols + 31) >> 5) : ((m_MiCols + 15) >> 4);
+		m_sbRows = use_128x128_superblock ? ((m_MiRows + 31) >> 5) : ((m_MiRows + 15) >> 4);
+		m_sbShift = use_128x128_superblock ? 5 : 4;
+		m_sbSize = m_sbShift + 2;
+		m_maxTileWidthSb = MAX_TILE_WIDTH >> m_sbSize;
+		m_maxTileAreaSb = MAX_TILE_AREA >> (2 * m_sbSize);
+		m_minLog2TileCols = tile_log2(m_maxTileWidthSb, m_sbCols);
+		m_maxLog2TileCols = tile_log2(1, AOMMIN(m_sbCols, MAX_TILE_COLS));
+		m_maxLog2TileRows = tile_log2(1, AOMMIN(m_sbRows, MAX_TILE_ROWS));
+		m_minLog2Tiles = AOMMAX(m_minLog2TileCols, tile_log2(m_maxTileAreaSb, m_sbRows * m_sbCols));
+
+		m_uniform_tile_spacing_flag = rb->AomRbReadBit();
+		if (m_uniform_tile_spacing_flag) {
+			m_TileColsLog2 = m_minLog2TileCols;
+				
+			while (m_TileColsLog2 < m_maxLog2TileCols) {
+				m_increment_tile_cols_log2 = rb->AomRbReadBit();
+						
+				if (m_increment_tile_cols_log2 == 1)
+					m_TileColsLog2++;
+				else
+					break;
+			}
+			m_tileWidthSb = (m_sbCols + (1 << m_TileColsLog2) - 1) >> m_TileColsLog2;
+
+			int i = 0;
+			for (int startSb = 0; startSb < m_sbCols; startSb += m_tileWidthSb) {
+				m_MiColStarts[i] = startSb << m_sbShift;
+				i += 1;
+			}
+			m_MiColStarts[i] = m_MiCols;
+			m_TileCols = i;
+
+			m_minLog2TileRows = AOMMAX(m_minLog2Tiles - m_TileColsLog2, 0);
+			m_TileRowsLog2 = m_minLog2TileRows;
+
+			while (m_TileRowsLog2 < m_maxLog2TileRows) {
+				m_increment_tile_rows_log2 = rb->AomRbReadBit();
+				if (m_increment_tile_rows_log2 == 1)
+					m_TileRowsLog2++;
+				else
+					break;
+			}
+			m_tileHeightSb = (m_sbRows + (1 << m_TileRowsLog2) - 1) >> m_TileRowsLog2;
+			int i = 0; 
+			for (int startSb = 0; startSb < m_sbRows; startSb += m_tileHeightSb) {
+				m_MiRowStarts[i] = startSb << m_sbShift;
+				i += 1;
+			}
+			m_MiRowStarts[i] = m_MiRows;
+			m_TileRows = i;
+		}
+		else {
+			m_widestTileSb = 0;
+			int startSb = 0, i = 0;
+			for (i = 0; startSb < m_sbCols; i++) {
+				m_MiColStarts[i] = startSb << m_sbShift;
+				int maxWidth = AOMMIN(m_sbCols - startSb, m_maxTileWidthSb);
+				m_width_in_sbs_minus_1 = rb->AomRbReadUniform(maxWidth);
+				int sizeSb = m_width_in_sbs_minus_1 + 1;
+				m_widestTileSb = AOMMAX(sizeSb, m_widestTileSb);
+				startSb += sizeSb;
+			}
+			m_MiColStarts[i] = m_MiCols;
+			m_TileCols = i;
+			m_TileColsLog2 = tile_log2(1, m_TileCols);
+
+			if (m_minLog2Tiles > 0)
+				m_maxTileAreaSb = (m_sbRows * m_sbCols) >> (m_minLog2Tiles + 1);
+			else
+				m_maxTileAreaSb = m_sbRows * m_sbCols;
+			m_maxTileHeightSb = AOMMAX(m_maxTileAreaSb / m_widestTileSb, 1);
+
+			startSb = 0;				
+			for (i = 0; startSb < m_sbRows; i++) {
+				m_MiRowStarts[i] = startSb << m_sbShift;
+				int maxHeight = AOMMIN(m_sbRows - startSb, m_maxTileHeightSb);
+				m_height_in_sbs_minus_1 = rb->AomRbReadUniform(maxHeight);
+				int sizeSb = m_height_in_sbs_minus_1 + 1;
+				startSb += sizeSb;
+			}
+			m_MiRowStarts[i] = m_MiRows;
+			m_TileRows = i;
+			m_TileRowsLog2 = tile_log2(1, m_TileRows);
+		}
+		if (m_TileColsLog2 > 0 || m_TileRowsLog2 > 0) {
+			m_context_update_tile_id = rb->AomRbReadLiteral(m_TileRowsLog2 + m_TileColsLog2);
+			m_tile_size_bytes_minus_1 = rb->AomRbReadLiteral(2);
+			m_TileSizeBytes = m_tile_size_bytes_minus_1 + 1;
+		}
+		else {
+			m_context_update_tile_id = 0;
+		}
+	}
+
+	void FhParserQuantizationParams(int NumPlanes, int separate_uv_delta_q, CBitReader *rb) {
+		m_base_q_idx = rb->AomRbReadLiteral(8);
+		m_DeltaQYDc = FhReadDeltaQ(rb);
+
+		if (NumPlanes > 1) {
+			if (separate_uv_delta_q)
+				m_diff_uv_delta = rb->AomRbReadBit();
+			else
+				m_diff_uv_delta = 0;
+
+			m_DeltaQUDc = FhReadDeltaQ(rb);
+			m_DeltaQUAc = FhReadDeltaQ(rb);
+
+			if (m_diff_uv_delta) {
+				m_DeltaQVDc = FhReadDeltaQ(rb);
+				m_DeltaQVAc = FhReadDeltaQ(rb);
+			}
+			else {
+				m_DeltaQVDc = m_DeltaQUDc;
+				m_DeltaQVAc = m_DeltaQUAc;
+			}
+		}
+		else {
+			m_DeltaQUDc = 0;
+			m_DeltaQUAc = 0;
+			m_DeltaQVDc = 0;
+			m_DeltaQVAc = 0;
+		}
+		m_using_qmatrix = rb->AomRbReadBit();
+
+		if (m_using_qmatrix) {
+			m_qm_y = rb->AomRbReadLiteral(4);
+			m_qm_u = rb->AomRbReadLiteral(4);
+
+			if (!separate_uv_delta_q)
+				m_qm_v = m_qm_u;
+			else
+				m_qm_y = rb->AomRbReadLiteral(4);
+		}
+	}
+
+	int FhReadDeltaQ(CBitReader *rb) {
+		m_delta_coded = rb->AomRbReadBit();
+
+		int delta_q = 0;
+		if (m_delta_coded) {
+			delta_q = AomRbReadInvSignedLiteral(6);
+		}
+		return delta_q;		
+	}
+
+	void FhParserSegmentationParams(CBitReader *rb) {
+		m_segmentation_enabled = rb->AomRbReadBit();
+
+		if (m_segmentation_enabled == 1) {
+			//unimplemented
+		}
+		else {
+			//unimplmented
+		}
+	/*	SegIdPreSkip = 0
+			LastActiveSegId = 0
+			for (i = 0; i < MAX_SEGMENTS; i++) {
+				for (j = 0; j < SEG_LVL_MAX; j++) {
+					if (FeatureEnabled[i][j]) {
+						LastActiveSegId = i
+							if (j >= SEG_LVL_REF_FRAME) {
+								SegIdPreSkip = 1
+							}
+					}
+				}*/
+	}
+
+	void FhParserDeltaQParams(CBitReader *rb) {
+		m_delta_q_res = 0;
+		m_delta_q_present = 0;
+
+		if (m_base_q_idx > 0) {
+			m_delta_q_present = rb->AomRbReadBit();
+		}
+		if (m_delta_q_present) {
+			m_delta_q_res = AomRbReadInvSignedLiteral(2);
+		}
+	}
+
+	void FhParserDeltaLfParams(CBitReader *rb) {
+		m_delta_lf_present = 0;
+		m_delta_lf_res = 0;
+		m_delta_lf_multi = 0;
+
+		if (m_delta_q_present) {
+			if (!m_allow_intrabc)
+				m_delta_lf_present = rb->AomRbReadBit();
+			if (m_delta_lf_present) {
+				m_delta_lf_res = rb->AomRbReadLiteral(2);
+				m_delta_lf_multi = rb->AomRbReadBit();
+			}
+		}
+	}
+
+	void FhSetCodedLossless(int CodedLossless) {
+		m_CodedLossless = CodedLossless;
+	}
+	void FhSetAllLossless(int AllLossless) {
+		m_AllLossless = AllLossless;
+	}
+
 	
+
+	void FhParserLoopFilterParams(int NumPlanes, CBitReader *rb) {
+		
+		if (m_CodedLossless || m_allow_intrabc) {
+			m_loop_filter_level[0] = 0;
+			m_loop_filter_level[1] = 0;
+			m_loop_filter_ref_deltas[INTRA_FRAME] = 1;
+			m_loop_filter_ref_deltas[LAST_FRAME] = 0;
+			m_loop_filter_ref_deltas[LAST2_FRAME] = 0;
+			m_loop_filter_ref_deltas[LAST3_FRAME] = 0;
+			m_loop_filter_ref_deltas[BWDREF_FRAME] = 0;
+			m_loop_filter_ref_deltas[GOLDEN_FRAME] = -1;
+			m_loop_filter_ref_deltas[ALTREF_FRAME] = -1;
+			m_loop_filter_ref_deltas[ALTREF2_FRAME] = -1;
+			
+			for (int i = 0; i < 2; i++) {
+				m_loop_filter_mode_deltas[i] = 0;
+			}
+			return;
+		}
+		m_loop_filter_level[0] = rb->AomRbReadLiteral(6);
+		m_loop_filter_level[1] = rb->AomRbReadLiteral(6);
+
+		if (NumPlanes > 1) {
+			if (m_loop_filter_level[0] || m_loop_filter_level[1]) {
+				m_loop_filter_level[2] = rb->AomRbReadLiteral(6);
+				m_loop_filter_level[3] = rb->AomRbReadLiteral(6);
+			}
+		}
+		m_loop_filter_sharpness = rb->AomRbReadLiteral(3);
+		m_loop_filter_delta_enabled = rb->AomRbReadBit();
+		if (m_loop_filter_delta_enabled == 1) {
+			m_loop_filter_delta_update = rb->AomRbReadBit();
+
+			if (m_loop_filter_delta_update == 1) {
+				for (int i = 0; i < TOTAL_REFS_PER_FRAME; i++) {
+					m_update_ref_delta = rb->AomRbReadBit();
+					if(m_update_ref_delta == 1)
+						m_loop_filter_ref_deltas[i] = rb->AomRbReadInvSignedLiteral(6);
+				}
+			}
+		}
+	}
+
+	void FhParserCdefParams(int NumPlanes, int enable_cdef, CBitReader *rb) {
+		if (m_CodedLossless || m_allow_intrabc || !enable_cdef) {
+			m_cdef_bits = 0;
+			m_cdef_y_pri_strength[0] = 0;
+			m_cdef_y_sec_strength[0] = 0;
+			m_cdef_uv_pri_strength[0] = 0;
+			m_cdef_uv_sec_strength[0] = 0;
+			m_CdefDamping = 3;
+			return;
+		}
+		m_cdef_damping_minus_3 = rb->AomRbReadLiteral(2);
+		m_CdefDamping = m_cdef_damping_minus_3 + 3;
+		m_cdef_bits = rb->AomRbReadLiteral(2);
+
+		for (int i = 0; i < (1 << m_cdef_bits); i++) {
+			m_cdef_y_pri_strength[i] = rb->AomRbReadLiteral(4);
+			m_cdef_y_sec_strength[i] = rb->AomRbReadLiteral(2);
+			if (m_cdef_y_sec_strength[i] == 3)
+				m_cdef_y_sec_strength[i] += 1;
+
+			if (NumPlanes > 1) {
+				m_cdef_uv_pri_strength[i] = rb->AomRbReadLiteral(4);
+				m_cdef_uv_sec_strength[i] = rb->AomRbReadLiteral(2);
+				if (m_cdef_uv_sec_strength[i] == 3)
+					m_cdef_uv_sec_strength[i] += 1;
+			}
+		}
+	}
+
+	void FhParserLrParams(int NumPlanes, int enable_restoration, int use_128x128_superblock,
+		int subsampling_x, int subsampling_y, CBitReader *rb) {
+		
+		if (m_AllLossless || m_allow_intrabc ||	!enable_restoration) {
+			m_FrameRestorationType[0] = RESTORE_NONE;
+			m_FrameRestorationType[1] = RESTORE_NONE;
+			m_FrameRestorationType[2] = RESTORE_NONE;
+			m_UsesLr = 0;
+			return;
+		}
+		m_UsesLr = 0;
+		m_usesChromaLr = 0;
+
+		for (int i = 0; i < NumPlanes; i++) {
+			m_lr_type = rb->AomRbReadLiteral(2);
+			m_FrameRestorationType[i] = Remap_Lr_Type[m_lr_type];
+			if (m_FrameRestorationType[i] != RESTORE_NONE) {
+				m_UsesLr = 1;
+				if (i > 0) {
+					m_usesChromaLr = 1;
+				}
+			}
+		}
+
+		if (m_UsesLr) {
+			if (use_128x128_superblock) {
+				m_lr_unit_shift = rb->AomRbReadBit();
+				m_lr_unit_shift++;
+			}
+			else {
+				m_lr_unit_shift = rb->AomRbReadBit();
+				if (m_lr_unit_shift) {
+					m_lr_unit_extra_shift = rb->AomRbReadBit();
+					m_lr_unit_shift += m_lr_unit_extra_shift;
+				}
+			}
+			m_LoopRestorationSize[0] = RESTORATION_TILESIZE_MAX >> (2 - m_lr_unit_shift);
+			
+			if (subsampling_x && subsampling_y && m_usesChromaLr) {
+				m_lr_uv_shift = rb->AomRbReadBit();
+			}
+			else {
+				m_lr_uv_shift = 0;
+			}
+			m_LoopRestorationSize[1] = m_LoopRestorationSize[0] >> m_lr_uv_shift;
+			m_LoopRestorationSize[2] = m_LoopRestorationSize[0] >> m_lr_uv_shift;
+		}
+	}
+
+	void FhParserTxModeSelect(CBitReader *rb) {
+		if (m_CodedLossless == 1) {
+			m_TxMode = ONLY_4X4;
+		}
+		else {
+			m_tx_mode_select = rb->AomRbReadBit();
+			if (m_tx_mode_select) {
+				m_TxMode = TX_MODE_SELECT;
+			}
+			else {
+				m_TxMode = TX_MODE_LARGEST;
+			}
+
+		}
+	}
+
+	void FhParserFrameReferenceMode(int FrameIsIntra, CBitReader *rb) {
+		if (FrameIsIntra) {
+			m_reference_select = 0;
+		}
+		else {
+			m_reference_select = rb->AomRbReadBit();
+		}
+	}
 
 	int FhReadShowExistingFrame() { return m_show_existing_frame; }
 	int FhReadShowFrame() { return m_show_frame; }
@@ -184,7 +595,15 @@ public:
 	int FhReadFrameWidth() { return m_FrameWidth; }
 
 	int FhReadCurrentFrameId() { return m_current_frame_id; }
+	int FhReadFrameSizeOverrideFlag() { return m_frame_size_override_flag;}
+	int FhReadDisableCdfUpdate() { return m_disable_cdf_update;}
 
+	int FhReadPrimaryRefFrame() { return m_primary_ref_frame; }
+	int FhReadUseRefFrameMvs() { return m_use_ref_frame_mvs; }
+
+	int FhReadCodedLossless() { return m_CodedLossless; }
+	int FhReadAllLossless() { return m_AllLossless; }
+	
 private:
 	int m_show_existing_frame;
 	int m_frame_to_show_map_idx;
@@ -236,65 +655,93 @@ private:
 	int m_delta_frame_id_minus_1;
 
 	//frame_size_with_refs( )
-	int m_FoundRef;
-
+	int m_found_ref;
 
 	//read_interpolation_filter( )
-	int m_IsFilterSwitchable;
-	int m_InterpolationFilter;
+	int m_is_filter_switchable;
+	int m_interpolation_filter;
 
-	int m_IsMotionModeSwitchable;
+	int m_is_motion_mode_switchable;
 
-
-	int m_DisableFrameEndUpdateCdf;
+	int m_disable_frame_end_update_cdf;
 
 	//tile_info ( )
-	int m_UniformTileSpacingFlag;
-	int m_IncrementTileColsLog2;
-	int m_IncrementTileRowsLog2;
-	int m_WidthInSbsMinus1;
-	int m_HeightInSbsMinus1;
-	int m_ContextUpdateTileId;
-	int m_TileSizeBytesMinus1;
+	int m_uniform_tile_spacing_flag;
+	int m_increment_tile_cols_log2;
+	int m_increment_tile_rows_log2;
+	int m_width_in_sbs_minus_1;
+	int m_height_in_sbs_minus_1;
+	int m_context_update_tile_id;
+	int m_tile_size_bytes_minus_1;
 
 	//quantization_params()
-	int m_BaseQIdx;
-	int m_DiffUvDelta;
-	int m_UsingQmatrix;
-	int m_QmY;
-	int m_QmV;
-	int m_QmU;
-
+	int m_base_q_idx;
+	int m_diff_uv_delta;
+	int m_using_qmatrix;
+	int m_qm_y;
+	int m_qm_u;
+	int m_qm_v;
 	//read_delta_q()
-	int m_DeltaCoded;
-	int m_DeltaQ;
+	int m_delta_coded;
+	int m_delta_q;
+
+	int m_DeltaQYDc;
+	int m_DeltaQUDc;
+	int m_DeltaQUAc;
+	int m_DeltaQVDc;
+	int m_DeltaQVAc;
+
 
 	//segmentation_params()
-	int m_SegmentationEnabled;
-	int m_SegmentationUpdateMap;
-	int m_SegmentationTemporalUpdate;
-	int m_SegmentationUpdateData;
-	int m_FeatureEnabled;
-	int m_FeatureValue;
+	int m_segmentation_enabled;
+	int m_segmentation_update_map;
+	int m_segmentation_temporal_update;
+	int m_segmentation_update_data;
+	int m_feature_enabled;
+	int m_feature_value;
 
 	//delta_q_params()
-	int m_DeltaQPresent;
-	int m_DeltaQRes;
+	int m_delta_q_present;
+	int m_delta_q_res;
 
 	//delta_lf_params()
-	int m_DeltaLfPresent;
-	int DeltaLfRes;
-	int DeltaLfMulti;
+	int m_delta_lf_present;
+	int m_delta_lf_res;
+	int m_delta_lf_multi;
 
 	//loop_filter_params()
-	int m_LoopFilterLevel[4];
-	int m_LoopFilterSharpness;
-	int m_LoopFilterDeltaEnabled;
-	int m_LoopFilterDeltaUpdate;
-	int m_UpdateRefDelta;
-	int m_LoopFilterRefDeltas;
-	int m_UpdateModeDelta;
-	int m_LoopFilterModeDeltas;
+	int m_loop_filter_level[4];
+	int m_loop_filter_sharpness;
+	int m_loop_filter_delta_enabled;
+	int m_loop_filter_delta_update;
+	int m_update_ref_delta;
+	int m_loop_filter_ref_deltas[TOTAL_REFS_PER_FRAME];
+	int m_update_mode_delta;
+	int m_loop_filter_mode_deltas[2];
+
+	int m_cdef_damping_minus_3;
+	int m_cdef_bits;
+	int m_cdef_y_pri_strength[8];
+	int m_cdef_y_sec_strength[8];
+	int m_cdef_uv_pri_strength[8];
+	int m_cdef_uv_sec_strength[8];
+	int m_CdefDamping;
+
+	int m_lr_type;
+	int m_lr_unit_shift;
+	int m_lr_unit_extra_shift;
+	int m_lr_uv_shift;
+	RestorationType m_FrameRestorationType[3];
+	int m_LoopRestorationSize[3];
+	int m_UsesLr;
+	int m_usesChromaLr;
+
+	//read_tx_mode()
+	int m_tx_mode_select;
+	TX_MODE m_TxMode;
+
+	//frame_reference_mode( )
+	int m_reference_select;
 
 	int m_RefValid[NUM_REF_FRAMES];
 	int	m_RefOrderHint[NUM_REF_FRAMES];
@@ -313,4 +760,34 @@ private:
 
 	int m_MiCols;
 	int m_MiRows;
+
+	int m_sbCols;
+	int m_sbRows;
+	int m_sbShift;
+	int	m_sbSize;
+	int	m_maxTileWidthSb;
+	int	m_maxTileAreaSb;
+	int	m_minLog2TileCols;
+	int	m_maxLog2TileCols;
+	int m_maxLog2TileRows;
+	int	m_minLog2Tiles;
+	int m_TileColsLog2; 
+	int m_maxLog2TileCol;
+	int m_tileWidthSb;
+
+	int m_MiColStarts[MAX_TILE_COLS + 1];  // valid for 0 <= i <= tile_cols
+	int m_MiRowStarts[MAX_TILE_ROWS + 1];  // valid for 0 <= i <= tile_rows
+	int m_TileCols;
+	int m_TileRows;
+
+	int m_minLog2TileRows;
+	int m_TileRowsLog2;
+	int m_tileHeightSb;
+
+	int m_widestTileSb;
+	int m_maxTileHeightSb;
+	int m_TileSizeBytes;
+
+	int m_CodedLossless;
+	int m_AllLossless;
 };

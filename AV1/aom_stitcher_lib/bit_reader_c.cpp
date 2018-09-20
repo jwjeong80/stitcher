@@ -62,3 +62,15 @@ int CBitReader::Av1CheckTrailingBits() {
 	}
 	return 0;
 }
+
+int CBitReader::AomRbReadUniform(int n)
+{
+	const int l = get_unsigned_bits(n);
+	const int m = (1 << l) - n;
+	const int v = AomRbReadLiteral(l - 1);
+	assert(l != 0);
+	if (v < m)
+		return v;
+	else
+		return (v << 1) - m + AomRbReadBit();
+}

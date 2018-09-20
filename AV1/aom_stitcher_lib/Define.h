@@ -25,7 +25,6 @@
 // definitions
 #define MAX_BIT_SIZE    (1024*1024)
 #define MAX_STREAMS     (440) /* 20x22 */
-#define MAX_STREAMS_PS	(MAX_STREAMS + 8/*VPS/SPS/PPS...*/)
 
 #define DISABLE_LINES       0
 #define STITCHER_FEATURES   1
@@ -62,6 +61,39 @@
 #define SUPERRES_DENOM_MIN  9
 #define SUPERRES_NUM 8
 
+#define MAX_TILE_ROWS 64
+#define MAX_TILE_COLS 64
+#define MAX_TILE_WIDTH (4096)        // Max Tile width in pixels
+#define MAX_TILE_AREA (4096 * 2304)  // Maximum tile area in pixels
+
+#define AOMMIN(x, y) (((x) < (y)) ? (x) : (y))
+#define AOMMAX(x, y) (((x) > (y)) ? (x) : (y))
+
+#define MAX_SEGMENTS 8
+#define TOTAL_REFS_PER_FRAME 8
+
+#define RESTORATION_TILESIZE_MAX 256
+
+typedef enum ATTRIBUTE_PACKED {
+	RESTORE_NONE,
+	RESTORE_WIENER,
+	RESTORE_SGRPROJ,
+	RESTORE_SWITCHABLE,
+	RESTORE_SWITCHABLE_TYPES = RESTORE_SWITCHABLE,
+	RESTORE_TYPES = 4,
+} RestorationType;
+
+const RestorationType Remap_Lr_Type[4] = {
+	RESTORE_NONE, RESTORE_SWITCHABLE, RESTORE_WIENER, RESTORE_SGRPROJ
+};
+
+typedef enum ATTRIBUTE_PACKED {
+	ONLY_4X4,         // use only 4x4 transform
+	TX_MODE_LARGEST,  // transform size is the largest possible for pu size
+	TX_MODE_SELECT,   // transform specified for each block
+	TX_MODES,
+} TX_MODE;
+
 typedef enum ATTRIBUTE_PACKED {
 	KEY_FRAME = 0,
 	INTER_FRAME = 1,
@@ -69,3 +101,14 @@ typedef enum ATTRIBUTE_PACKED {
 	SWITCH_FRAME = 3,
 	FRAME_TYPES,
 } FRAME_TYPE;
+
+typedef enum ATTRIBUTE_PACKED {
+	EIGHTTAP_REGULAR,
+	EIGHTTAP_SMOOTH,
+	MULTITAP_SHARP,
+	BILINEAR,
+	INTERP_FILTERS_ALL,
+	SWITCHABLE_FILTERS = BILINEAR,
+	SWITCHABLE = SWITCHABLE_FILTERS + 1, /* the last switchable one */
+	EXTRA_FILTERS = INTERP_FILTERS_ALL - SWITCHABLE_FILTERS,
+} InterpFilter;
