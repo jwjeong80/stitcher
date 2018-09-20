@@ -72,6 +72,7 @@ COBUParser::~COBUParser(void)
 
 void COBUParser::Create()
 {
+	m_NumObu = 0;
 	//m_ShManager.Init();
 }
 
@@ -418,7 +419,7 @@ bool COBUParser::DecodeOneOBUC(uint8_t *pBitStream, uint32_t uiBitstreamSize, bo
 
 	const uint8_t *data = pBitStream;
 	const uint8_t *data_end = pBitStream + uiBitstreamSize;
-
+	m_NumObu = 0;
 	//pbi->seen_frame_header = 0;
 
 	//if (data_end < data) {
@@ -471,6 +472,8 @@ bool COBUParser::DecodeOneOBUC(uint8_t *pBitStream, uint32_t uiBitstreamSize, bo
 		CBitReader rb(data, data + payload_size, 0);
 		//InitReadBitBuffer(&rb, data, data + payload_size);
 		//av1_init_read_bit_buffer(pbi, &rb, data, data + payload_size);
+
+		m_ObuHeader[m_NumObu] = obu_header;
 
 		switch (obu_header.type) {
 		case OBU_TEMPORAL_DELIMITER:
@@ -549,7 +552,7 @@ bool COBUParser::DecodeOneOBUC(uint8_t *pBitStream, uint32_t uiBitstreamSize, bo
 				return -1;
 			}
 		}
-
+		m_NumObu++;
 		data += payload_size;
 	}
 
@@ -666,7 +669,6 @@ uint32_t COBUParser::ReadFrameHeaderObu(CBitReader *rb, const uint8_t *data, int
 	const uint32_t saved_bit_offset = rb->AomRbReadBitOffset();
 	CSequenceHeader *pSh = &m_ShBuffer;
 	CFrameHeader *pFh = &m_FhBuffer;
-	ObuHeader obu_header;
 
 	int idLen = 0;
 	int FrameIsIntra = 1;
@@ -815,8 +817,8 @@ uint32_t COBUParser::ReadFrameHeaderObu(CBitReader *rb, const uint8_t *data, int
 				if (pSh->ShReadDecoderModelPresentForThisOp(opNum)) {
 					int opPtIdc = pSh->ShReadOperatingPointIdc(opNum);
 
-					int inTemporalLayer = (opPtIdc >> obu_header.temporal_layer_id) & 1;
-					int	inSpatialLayer = (opPtIdc >> (obu_header.spatial_layer_id + 8)) & 1;
+					int inTemporalLayer = (opPtIdc >> m_ObuHeader[m_NumObu].temporal_layer_id) & 1;
+					int	inSpatialLayer = (opPtIdc >> (m_ObuHeader[m_NumObu].spatial_layer_id + 8)) & 1;
 						
 					if (opPtIdc == 0 || (inTemporalLayer && inSpatialLayer)) {
 						pFh->FhParserBufferRemovalTime(opNum, rb->AomRbReadLiteral(n));
@@ -990,6 +992,20 @@ uint32_t COBUParser::ReadFrameHeaderObu(CBitReader *rb, const uint8_t *data, int
 	pFh->FhParserLoopFilterParams(pSh->ShReadNumPlanes(), rb);
 	pFh->FhParserCdefParams(pSh->ShReadNumPlanes(), pSh->ShReadEnableCdef(), rb);
 
+	pFh->FhParserLrParams(pSh->ShReadNumPlanes(), pSh->ShReadEnableRestoration(),
+		pSh->ShReadUse128x128Superblock(), pSh->ShReadSubsamplingX(), pSh->ShReadSubsamplingY(), rb);
+	
+	pFh->FhParserTxMode(rb);
+	pFh->FhParserFrameReferenceMode(FrameIsIntra, rb);
+	pFh->FhParserSkipModeParams(FrameIsIntra, pSh->ShReadEnableOrderHint(), rb);
 
+	if (FrameIsIntra || pFh->FhReadErrorResilientMode() || !pSh->ShReadEnableWarpedMotion())
+		pFh->FhParserAllowWarpedMotion(0);
+	else
+		pFh->FhParserAllowWarpedMotion(rb->AomRbReadBit());
+	pFh->FhParserReducedTxSet(rb->AomRbReadBit());
+
+	pFh->FhParserGlobalMotionParams(FrameIsIntra, rb);
+	//film_grain_params(); //unimplemented
 	return 1;
 }

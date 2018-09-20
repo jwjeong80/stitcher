@@ -144,6 +144,8 @@ private:
 	CFrameHeader         m_FhBuffer;
 	//ShManager            m_ShManager;                // Parameter Set Manager
 	COBUInfo             m_ObuInfo;                   // storage for slice header & segment data
+	ObuHeader            m_ObuHeader[10];
+	int                  m_NumObu;
 	//TComInputBitstream	m_SliceSegData;             // storage for slice segment data
 
 	//Bool                m_bShowLogsFlag;

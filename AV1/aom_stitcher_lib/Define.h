@@ -75,6 +75,14 @@
 #define RESTORATION_TILESIZE_MAX 256
 
 typedef enum ATTRIBUTE_PACKED {
+	IDENTITY = 0,      // identity transformation, 0-parameter
+	TRANSLATION = 1,   // translational motion 2-parameter
+	ROTZOOM = 2,       // simplified affine with rotation + zoom only, 4-parameter
+	AFFINE = 3,        // affine, 6-parameter
+	TRANS_TYPES,
+} TransformationType;
+
+typedef enum ATTRIBUTE_PACKED {
 	RESTORE_NONE,
 	RESTORE_WIENER,
 	RESTORE_SGRPROJ,

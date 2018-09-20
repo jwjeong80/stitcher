@@ -123,7 +123,6 @@
     <ClCompile Include="av1_common.cpp" />
     <ClCompile Include="bit_reader.cpp" />
     <ClCompile Include="bit_reader_c.cpp" />
-    <ClCompile Include="FrameHeader.cpp" />
     <ClCompile Include="OBUParser.cpp" />
     <ClCompile Include="SequenceHeader.cpp" />
     <ClCompile Include="test.cpp" />

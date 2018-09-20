@@ -439,6 +439,10 @@ public:
 	int ShReadSeparateUvDeltaQ() { return m_separate_uv_delta_q; }
 	int ShReadNumPlanes() { return m_NumPlanes; }
 	int ShReadEnableCdef() { return m_enable_cdef; }
+	int ShReadEnableRestoration() { return m_enable_restoration; }
+	int ShReadSubsamplingX() { return m_subsampling_x; }
+	int ShReadSubsamplingY() { return m_subsampling_y; }
+	int ShReadEnableWarpedMotion() { return m_enable_warped_motion; }
 	
 private:
 	BITSTREAM_PROFILE m_seq_profile;

@@ -277,7 +277,7 @@ public:
 					break;
 			}
 			m_tileHeightSb = (m_sbRows + (1 << m_TileRowsLog2) - 1) >> m_TileRowsLog2;
-			int i = 0; 
+			i = 0; 
 			for (int startSb = 0; startSb < m_sbRows; startSb += m_tileHeightSb) {
 				m_MiRowStarts[i] = startSb << m_sbShift;
 				i += 1;
@@ -558,7 +558,7 @@ public:
 		}
 	}
 
-	void FhParserTxModeSelect(CBitReader *rb) {
+	void FhParserTxMode(CBitReader *rb) {
 		if (m_CodedLossless == 1) {
 			m_TxMode = ONLY_4X4;
 		}
@@ -582,6 +582,97 @@ public:
 			m_reference_select = rb->AomRbReadBit();
 		}
 	}
+
+	void FhParserSkipModeParams(int FrameIsIntra, int enable_order_hint, CBitReader *rb) {
+		if (FrameIsIntra || !m_reference_select || !enable_order_hint) {
+			m_skipModeAllowed = 0;
+		}
+		else {
+			m_forwardIdx = -1;
+			m_backwardIdx = -1;
+
+			//for (int i = 0; i < INTER_REFS_PER_FRAME; i++) {
+			//	refHint = RefOrderHint[ref_frame_idx[i]]
+			//		if (get_relative_dist(refHint, OrderHint) < 0) {
+			//			if (forwardIdx < 0 ||
+			//				get_relative_dist(refHint, forwardHint) > 0) {
+			//				forwardIdx = i
+			//					forwardHint = refHint
+			//			}
+			//		}
+			//		else if (get_relative_dist(refHint, OrderHint) > 0) {
+			//			if (backwardIdx < 0 ||
+			//				get_relative_dist(refHint, backwardHint) < 0) {
+			//				backwardIdx = i
+			//					backwardHint = refHint
+			//			}
+			//		}
+			//}
+		}
+
+		if (m_skipModeAllowed) {
+			m_skip_mode_present = rb->AomRbReadBit();
+		}
+		else {
+			m_skip_mode_present = 0;
+		}
+	}
+
+	void FhParserAllowWarpedMotion(int allow_warped_motion) {
+		m_allow_warped_motion = allow_warped_motion;
+	}
+	void FhParserReducedTxSet(int reduced_tx_set) {
+		m_reduced_tx_set = reduced_tx_set;
+	}
+
+	void FhParserGlobalMotionParams(int FrameIsIntra, CBitReader *rb) {
+		for (int ref = LAST_FRAME; ref <= ALTREF_FRAME; ref++) {
+			m_GmType[ref] = IDENTITY;
+			for (int i = 0; i < 6; i++) {
+				//gm_params[ref][i] = ((i % 3 == 2) ? 1 << WARPEDMODEL_PREC_BITS : 0);
+			}
+		}
+		if (FrameIsIntra)
+			return;
+
+		for (int ref = LAST_FRAME; ref <= ALTREF_FRAME; ref++) {
+			m_is_global = rb->AomRbReadBit();
+			TransformationType type;
+			if (m_is_global) {
+				m_is_rot_zoom = rb->AomRbReadBit();
+				if (m_is_rot_zoom) {
+					type = ROTZOOM;
+				}
+				else {
+					m_is_translation = rb->AomRbReadBit();
+					type = m_is_translation ? TRANSLATION : AFFINE;
+				}
+			}
+			else {
+				type = IDENTITY;
+			}
+			m_GmType[ref] = type;
+
+			if (type >= ROTZOOM) {
+				//read_global_param(type, ref, 2);
+				//read_global_param(type, ref, 3);
+				if (type == AFFINE) {
+					//read_global_param(type, ref, 4);
+					//read_global_param(type, ref, 5)//
+				}
+				else {
+					//gm_params[ref][4] = -gm_params[ref][3];
+					//gm_params[ref][5] = gm_params[ref][2];
+				}
+			}
+			if (type >= TRANSLATION) {
+				//read_global_param(type, ref, 0);
+				//read_global_param(type, ref, 1);
+			}
+		}
+
+	}
+
 
 	int FhReadShowExistingFrame() { return m_show_existing_frame; }
 	int FhReadShowFrame() { return m_show_frame; }
@@ -742,6 +833,25 @@ private:
 
 	//frame_reference_mode( )
 	int m_reference_select;
+
+	//skip_mode_params()
+	int m_skipModeAllowed;
+	int m_forwardIdx;
+	int m_backwardIdx;
+	int m_forwardHint;
+	int m_SkipModeFrame[2];
+	int m_secondForwardIdx;
+	int m_secondForwardHint;
+	int m_skip_mode_present;
+
+	int m_allow_warped_motion;
+	int m_reduced_tx_set;
+
+	//global_motion_params( )
+	int m_is_global;
+	int m_is_rot_zoom;
+	int m_is_translation;
+	TransformationType m_GmType[INTER_REFS_PER_FRAME];
 
 	int m_RefValid[NUM_REF_FRAMES];
 	int	m_RefOrderHint[NUM_REF_FRAMES];
