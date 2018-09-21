@@ -476,6 +476,11 @@ public:
 					if(m_update_ref_delta == 1)
 						m_loop_filter_ref_deltas[i] = rb->AomRbReadInvSignedLiteral(6);
 				}
+				for (int i = 0; i < 2; i++) {
+					m_update_mode_delta = rb->AomRbReadBit();
+					if(m_update_mode_delta == 1)
+						m_loop_filter_mode_deltas[i] = rb->AomRbReadInvSignedLiteral(6);
+				}
 			}
 		}
 	}
@@ -673,6 +678,13 @@ public:
 
 	}
 
+	//tile_group_obu()
+	void FhParserTileStartAndEndPresentFlag(int tile_start_and_end_present_flag) {
+		m_tile_start_and_end_present_flag = tile_start_and_end_present_flag;
+	}
+
+	
+
 
 	int FhReadShowExistingFrame() { return m_show_existing_frame; }
 	int FhReadShowFrame() { return m_show_frame; }
@@ -694,6 +706,12 @@ public:
 
 	int FhReadCodedLossless() { return m_CodedLossless; }
 	int FhReadAllLossless() { return m_AllLossless; }
+
+	int FhReadTileCols() { return m_TileCols; }
+	int FhReadTileRows() { return m_TileRows; }
+
+	int FhReadTileColsLog2() { return m_TileColsLog2; }
+	int FhReadTileRowsLog2() { return m_TileRowsLog2; }
 	
 private:
 	int m_show_existing_frame;
@@ -878,10 +896,12 @@ private:
 	int	m_maxTileWidthSb;
 	int	m_maxTileAreaSb;
 	int	m_minLog2TileCols;
+	int m_minLog2TileRows;
 	int	m_maxLog2TileCols;
 	int m_maxLog2TileRows;
 	int	m_minLog2Tiles;
 	int m_TileColsLog2; 
+	int m_TileRowsLog2;
 	int m_maxLog2TileCol;
 	int m_tileWidthSb;
 
@@ -890,14 +910,14 @@ private:
 	int m_TileCols;
 	int m_TileRows;
 
-	int m_minLog2TileRows;
-	int m_TileRowsLog2;
 	int m_tileHeightSb;
-
 	int m_widestTileSb;
 	int m_maxTileHeightSb;
 	int m_TileSizeBytes;
 
 	int m_CodedLossless;
 	int m_AllLossless;
+
+	//tile_group_obu(sz)
+	int m_tile_start_and_end_present_flag;
 };

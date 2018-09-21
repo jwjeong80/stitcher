@@ -420,6 +420,8 @@ bool COBUParser::DecodeOneOBUC(uint8_t *pBitStream, uint32_t uiBitstreamSize, bo
 	const uint8_t *data = pBitStream;
 	const uint8_t *data_end = pBitStream + uiBitstreamSize;
 	m_NumObu = 0;
+	int remain_sz = uiBitstreamSize;
+	int one_tile_size;
 	//pbi->seen_frame_header = 0;
 
 	//if (data_end < data) {
@@ -455,6 +457,7 @@ bool COBUParser::DecodeOneOBUC(uint8_t *pBitStream, uint32_t uiBitstreamSize, bo
 		// Note: aom_read_obu_header_and_size() takes care of checking that this
 		// doesn't cause 'data' to advance past 'data_end'.
 		data += bytes_read;
+		remain_sz -= bytes_read;
 
 		if ((size_t)(data_end - data) < payload_size) {
 			return -1;
@@ -474,64 +477,82 @@ bool COBUParser::DecodeOneOBUC(uint8_t *pBitStream, uint32_t uiBitstreamSize, bo
 		//av1_init_read_bit_buffer(pbi, &rb, data, data + payload_size);
 
 		m_ObuHeader[m_NumObu] = obu_header;
-
+		int tile_group_header_size = 0;
 		switch (obu_header.type) {
 		case OBU_TEMPORAL_DELIMITER:
 			decoded_payload_size = ReadTemporalDelimiterObu();
 			m_SeenFrameHeader = 0;
 			break;
-			case OBU_SEQUENCE_HEADER:
-				if (!seq_header_received) {
-					decoded_payload_size = ReadSequenceHeaderObu(&rb);
-					//if (cm->error.error_code != AOM_CODEC_OK) return -1;
+		case OBU_SEQUENCE_HEADER:
+			if (!seq_header_received) {
+				decoded_payload_size = ReadSequenceHeaderObu(&rb);
+				//if (cm->error.error_code != AOM_CODEC_OK) return -1;
 
-					seq_header_size = decoded_payload_size;
-					seq_header_received = 1;
-				}
-				else {
-					// Seeing another sequence header, skip as all sequence headers are
-					// required to be identical except for the contents of
-					// operating_parameters_info and the amount of trailing bits.
-					// TODO(yaowu): verifying redundant sequence headers are identical.
-					decoded_payload_size = seq_header_size;
-				}
-				break;
-			case OBU_FRAME_HEADER:
-			case OBU_REDUNDANT_FRAME_HEADER:
-			case OBU_FRAME:
-				// Only decode first frame header received
-				if (!m_SeenFrameHeader /*||
-					(cm->large_scale_tile && !pbi->camera_frame_header_ready)*/) {
-					frame_header_size = ReadFrameHeaderObu(               //obu.c
-						&rb, data, obu_header.type != OBU_FRAME);
-					m_SeenFrameHeader = 1;
-					//if (!pbi->ext_tile_debug && cm->large_scale_tile)
-					//	pbi->camera_frame_header_ready = 1;
-				}
-				else {
-					//// TODO(wtc): Verify that the frame_header_obu is identical to the
-					//// original frame_header_obu. For now just skip frame_header_size
-					//// bytes in the bit buffer.
-					//if (frame_header_size > payload_size) {
-					//	cm->error.error_code = AOM_CODEC_CORRUPT_FRAME;
-					//	return -1;
-					//}
-					//assert(rb.bit_offset == 0);
-					//rb.bit_offset = 8 * frame_header_size;
-				}
-				//decoded_payload_size = frame_header_size;
-				//pbi->frame_header_size = frame_header_size;
+				seq_header_size = decoded_payload_size;
+				seq_header_received = 1;
 
-				//if (cm->show_existing_frame) {
-				//	if (obu_header.type == OBU_FRAME) {
-				//		cm->error.error_code = AOM_CODEC_UNSUP_BITSTREAM;
-				//		return -1;
-				//	}
-				//	frame_decoding_finished = 1;
-				//	pbi->seen_frame_header = 0;
-				//	break;
+				remain_sz -= seq_header_size;
+			}
+			else {
+				// Seeing another sequence header, skip as all sequence headers are
+				// required to be identical except for the contents of
+				// operating_parameters_info and the amount of trailing bits.
+				// TODO(yaowu): verifying redundant sequence headers are identical.
+				decoded_payload_size = seq_header_size;
+			}
+			break;
+		case OBU_FRAME_HEADER:
+		case OBU_REDUNDANT_FRAME_HEADER:
+		case OBU_FRAME:
+			// Only decode first frame header received
+			if (!m_SeenFrameHeader /*||
+				(cm->large_scale_tile && !pbi->camera_frame_header_ready)*/) {
+				frame_header_size = ReadFrameHeaderObu(               //obu.c
+					&rb, data, obu_header.type != OBU_FRAME);
+				m_SeenFrameHeader = 1;
+				//if (!pbi->ext_tile_debug && cm->large_scale_tile)
+				//	pbi->camera_frame_header_ready = 1;
+			}
+			else {
+				//// TODO(wtc): Verify that the frame_header_obu is identical to the
+				//// original frame_header_obu. For now just skip frame_header_size
+				//// bytes in the bit buffer.
+				//if (frame_header_size > payload_size) {
+				//	cm->error.error_code = AOM_CODEC_CORRUPT_FRAME;
+				//	return -1;
 				//}
+				//assert(rb.bit_offset == 0);
+				//rb.bit_offset = 8 * frame_header_size;
+			}
+			decoded_payload_size = frame_header_size;
+			//pbi->frame_header_size = frame_header_size;
 
+			if (obu_header.type != OBU_FRAME) break;
+			obu_payload_offset = frame_header_size;
+			// Byte align the reader before reading the tile group.
+			if (rb.ByteAlignment()) return -1;
+
+			remain_sz -= frame_header_size;
+		case OBU_TILE_GROUP:
+			
+			if (!m_SeenFrameHeader) {
+				return -1;
+			}
+			if (obu_payload_offset > payload_size) {
+				return -1;
+			}
+
+			int start_tile, end_tile;
+			tile_group_header_size = ReadTileGroupHeader(&rb, &start_tile, &end_tile, obu_header.type == OBU_FRAME);
+			if (tile_group_header_size == -1 || rb.ByteAlignment())
+				return 0;
+			data += tile_group_header_size;
+			remain_sz -= frame_header_size;
+			one_tile_size = remain_sz;
+
+			//get_tile_buffer;
+
+			break;
 		default:
 			// Skip unrecognized OBUs
 			decoded_payload_size = payload_size;
@@ -663,7 +684,7 @@ uint32_t COBUParser::ReadSequenceHeaderObu(CBitReader *rb)
 }
 
 
-uint32_t COBUParser::ReadFrameHeaderObu(CBitReader *rb, const uint8_t *data, int trainiling_bits_present)
+uint32_t COBUParser::ReadFrameHeaderObu(CBitReader *rb, const uint8_t *data, int trailing_bits_present)
 {
 
 	const uint32_t saved_bit_offset = rb->AomRbReadBitOffset();
@@ -985,6 +1006,7 @@ uint32_t COBUParser::ReadFrameHeaderObu(CBitReader *rb, const uint8_t *data, int
 	for (int segmentId = 0; segmentId < MAX_SEGMENTS; segmentId++)
 	{
 		//unimplemented
+		pFh->FhSetCodedLossless(0);
 	}
 
 	int AllLossless = pFh->FhReadCodedLossless() && (pFh->FhReadFrameWidth() == pFh->FhReadUpscaledWidth());
@@ -1007,5 +1029,40 @@ uint32_t COBUParser::ReadFrameHeaderObu(CBitReader *rb, const uint8_t *data, int
 
 	pFh->FhParserGlobalMotionParams(FrameIsIntra, rb);
 	//film_grain_params(); //unimplemented
-	return 1;
+
+	if(trailing_bits_present)
+		rb->Av1CheckTrailingBits(); 
+	const uint32_t uncomp_hdr_size = (uint32_t)rb->AomRbBytesRead();  // Size of the uncompressed header
+	return uncomp_hdr_size;
+}
+
+
+int32_t COBUParser::ReadTileGroupHeader(CBitReader *rb, int *start_tile, int *end_tile,
+	int tile_start_implicit) {
+	uint32_t saved_bit_offset = rb->AomRbReadBitOffset();
+
+	CFrameHeader *pFh = &m_FhBuffer;
+	
+	int tile_start_and_end_present_flag = 0;
+	const int num_tiles = pFh->FhReadTileCols() * pFh->FhReadTileRows();
+
+	if (num_tiles > 1) {
+		tile_start_and_end_present_flag = rb->AomRbReadBit();
+		pFh->FhParserTileStartAndEndPresentFlag(tile_start_and_end_present_flag);
+	}
+	if (num_tiles == 1 || !tile_start_and_end_present_flag) {
+		*start_tile = 0;
+		*end_tile = num_tiles - 1;
+		return ((rb->AomRbReadBitOffset() - saved_bit_offset + 7) >> 3);
+	}
+	if (tile_start_implicit && tile_start_and_end_present_flag) {
+		printf("For OBU_FRAME type obu tile_start_and_end_present_flag must be 0");
+		return -1;
+	} 
+	int tileBits = pFh->FhReadTileRowsLog2() + pFh->FhReadTileColsLog2();
+	*start_tile = rb->AomRbReadLiteral(tileBits);
+	*end_tile = rb->AomRbReadLiteral(tileBits);
+
+	return ((rb->AomRbReadBitOffset() - saved_bit_offset + 7) >> 3);
+	//return 1;
 }

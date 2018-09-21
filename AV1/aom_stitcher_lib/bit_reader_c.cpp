@@ -1,5 +1,6 @@
 #include "bit_reader_c.h"
 #include <assert.h>
+#include <stdio.h>
 
 size_t CBitReader::AomRbBytesRead() {
 	return (m_bit_offset + 7) >> 3;
@@ -73,4 +74,15 @@ int CBitReader::AomRbReadUniform(int n)
 		return v;
 	else
 		return (v << 1) - m + AomRbReadBit();
+}
+
+
+const int CBitReader::ByteAlignment() {
+	while (m_bit_offset & 7) {
+		if (AomRbReadBit()) {
+			printf("ByteAlignment Error\n");
+			return -1;
+		}
+	}
+	return 0;
 }

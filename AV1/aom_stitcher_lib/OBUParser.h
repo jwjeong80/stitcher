@@ -138,6 +138,8 @@ public:
 		 size_t *consumed, ObuHeader *header, int is_annexb);
 
 	 uint32_t ReadFrameHeaderObu(CBitReader *rb, const uint8_t *data, int trainiling_bits_present);
+
+	 int32_t ReadTileGroupHeader(CBitReader *rb, int *start_tile, int *end_tile, int tile_start_implicit);
 	 
 private:
 	CSequenceHeader      m_ShBuffer;

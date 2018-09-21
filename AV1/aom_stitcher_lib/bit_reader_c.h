@@ -32,11 +32,11 @@ public:
 	uint32_t AomRbReadUvlc();
 	int AomRbReadUniform(int n);
 	int Av1CheckTrailingBits();
+	const int ByteAlignment();
 
 	const uint8_t* AomRbReadBitBuffer() { return m_bit_buffer; }
 	const uint8_t* AomRbReadBitBufferEnd() { return m_bit_buffer_end; }
 	uint32_t AomRbReadBitOffset() { return m_bit_offset; }
-
 
 
 private:
