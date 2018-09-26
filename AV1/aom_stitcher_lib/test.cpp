@@ -274,13 +274,13 @@ uint32_t __stdcall OnBStrStitchProc(void* pThis)
 			pAV1OBU[i].pMemAddrOfOBU = pInputBitBuffers[i];
 			pAV1OBU[i].uiSizeOfOBUs = buffer_size;
 			
+			cout << i << " ";
 			OBU_TYPE type = (OBU_TYPE)((pAV1OBU[i].pMemAddrOfOBU[0] & 0x78) >> 3);
-			cout << type << endl;
+			cout << type << " ";
 			type = (OBU_TYPE)((pAV1OBU[i].pMemAddrOfOBU[2] & 0x78) >> 3);
-			cout << type << endl;
+			cout << type << " ";
 			type = (OBU_TYPE)((pAV1OBU[i].pMemAddrOfOBU[15] & 0x78) >> 3);
 			cout << type << endl;
-			printf("frame border \n");
 
 			//if (pAV1OBU[i].uiNumOfOBU == 0)
 			//{

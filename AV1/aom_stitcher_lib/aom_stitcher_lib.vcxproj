@@ -124,6 +124,7 @@
     <ClCompile Include="bit_reader.cpp" />
     <ClCompile Include="bit_reader_c.cpp" />
     <ClCompile Include="OBUParser.cpp" />
+    <ClCompile Include="OBUWriter.cpp" />
     <ClCompile Include="SequenceHeader.cpp" />
     <ClCompile Include="test.cpp" />
   </ItemGroup>
@@ -139,6 +140,7 @@
     <ClInclude Include="Define.h" />
     <ClInclude Include="FrameHeader.h" />
     <ClInclude Include="OBUParser.h" />
+    <ClInclude Include="OBUWriter.h" />
     <ClInclude Include="obu_header.h" />
     <ClInclude Include="SequenceHeader.h" />
     <ClInclude Include="stdafx.h" />

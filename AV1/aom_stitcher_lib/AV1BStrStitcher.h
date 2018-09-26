@@ -16,7 +16,7 @@
 #include "AV1File.h"
 
 #include "OBUParser.h"
-//#include "HEVCWriter.h"
+#include "OBUWriter.h"
 
 class CAV1BStrStitcher
 {
@@ -36,7 +36,7 @@ public:
 
 private:
 	COBUParser * m_pOBUParser[MAX_STREAMS];
-	//CHEVCWriter  m_HevcWriter;
+	COBUWriter  m_OBUWriter;
 
 protected:
 

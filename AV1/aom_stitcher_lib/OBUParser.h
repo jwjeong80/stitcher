@@ -61,8 +61,51 @@ const uint32_t kObuExtSpatialIdBitsShift = 3;
 class	COBUInfo	// Private structure
 {
 public:
-	COBUInfo();
+
+	COBUInfo() : 
+		m_pSeqHdrOBuStartAddr(NULL),
+		m_pFrameObuStartAddr(NULL), 
+		m_pFrameHeaderStartAddr(NULL), 
+		m_pTileHeaderStartAddr(NULL),
+		m_pTileDataStartAddr(NULL),
+		m_SeqHdrSize(-1),
+		m_SeqHdrObuHdrSize(-1),
+		m_SeqHeaderDataSize(-1),
+		m_FrameObuSize(-1),
+		m_FrameObuHdrSize(-1),
+		m_FrameHeaderSize(-1),
+	    m_TileHeaderSize(-1),
+	    m_TileDataSize(-1) {}
+	
 	~COBUInfo();
+	
+	ObuHeader obu_header[10];
+
+	const uint8_t* m_pSeqHdrOBuStartAddr;  //sequence header OBU start address  
+	const uint8_t* m_pFrameObuStartAddr;   //frame OBU start address
+	const uint8_t* m_pFrameHeaderStartAddr; // = m_pFrameObuStartAddr + m_FrameObuSize;
+	const uint8_t* m_pTileHeaderStartAddr;  // = m_pFrameHeaderStartAddr + m_FrameHeaderSize;
+	const uint8_t* m_pTileDataStartAddr;    // = m_pTileHeaderStartAddr + m_TileHeaderSize;
+	                                             
+	
+	//Sequence Header OBU:  
+	// m_pSeqHeaderStartAddr
+	//         |
+	//         |m_SeqHeaderOBUSize|m_SeqHeaderDataSize|
+	int m_SeqHdrSize;      // m_SeqHdrObuHdrSize+ m_SeqHeaderDataSize
+	int m_SeqHdrObuHdrSize;        
+	int m_SeqHeaderDataSize;
+
+	//Frame Header OBU:  
+	// m_pFrameObuStartAddr                 m_pTileHeaderStartAddr
+	//       |         m_pFrameHeaderStartAddr      |      m_pTileDataStartAddr            
+	//       |                  |                   |                  |
+	//       |m_FrameObuHdrSize | m_FrameHeaderSize | m_TileHeaderSize | m_TileDataSize |
+	int m_FrameObuSize; // m_FrameObuSize + m_FrameObuHdrSize + m_TileHeaderSize + m_TileDataSize
+	int m_FrameObuHdrSize;      
+	int m_FrameHeaderSize;   
+	int m_TileHeaderSize;   
+	int m_TileDataSize;     
 
 
 
@@ -138,9 +181,17 @@ public:
 		 size_t *consumed, ObuHeader *header, int is_annexb);
 
 	 uint32_t ReadFrameHeaderObu(CBitReader *rb, const uint8_t *data, int trainiling_bits_present);
-
 	 int32_t ReadTileGroupHeader(CBitReader *rb, int *start_tile, int *end_tile, int tile_start_implicit);
 	 
+	 const uint8_t *getSeqHeader() { return m_ObuInfo.m_pSeqHdrOBuStartAddr; }
+	 int getSeqHeaderSize() { return m_ObuInfo.m_SeqHdrSize; }
+
+	 const uint8_t *getFrameObu() { return m_ObuInfo.m_pFrameObuStartAddr; }
+	 const uint8_t *getTlieHeader() { return m_ObuInfo.m_pTileHeaderStartAddr; }
+	 const uint8_t *getTlieData() { return m_ObuInfo.m_pTileDataStartAddr; }
+
+	 int getFrameObuSize() { return m_ObuInfo.m_FrameObuSize; }
+
 private:
 	CSequenceHeader      m_ShBuffer;
 	CFrameHeader         m_FhBuffer;

@@ -42,8 +42,8 @@ int CAV1BStrStitcher::Create(uint32_t uiNumTileRows, uint32_t uiNumTileCols, boo
 		m_pOBUParser[i] = new COBUParser;
 		m_pOBUParser[i]->Create();
 	}
-	//m_HevcWriter.Create(uiNumTileRows, uiNumTileCols, bAnnexB);
-
+	m_OBUWriter.Create(uiNumTileRows, uiNumTileCols, bAnnexB);
+	
 	return 1;
 }
 
@@ -58,7 +58,7 @@ void CAV1BStrStitcher::Destroy()
 		}
 	}
 
-	//m_HevcWriter.Destroy();
+	m_OBUWriter.Destroy();
 }
 
 int CAV1BStrStitcher::StitchSingleOBU(const OBU *pInpOBUs, uint32_t uiAnnexBFlags, OBU *pOutOBUs)
@@ -68,34 +68,42 @@ int CAV1BStrStitcher::StitchSingleOBU(const OBU *pInpOBUs, uint32_t uiAnnexBFlag
 
 	//bool bRwGlbHdrsFlag = uiStitchFlags & WRITE_GLB_HDRS;
 	bool bAnnexB = uiAnnexBFlags;
-	
+	bool bRwSeqHdrsFlag;
+	bool bSeqHeaderSame = true;
 	 //decode all OBUs
 	for (int i = 0; i < m_uiNumParsers; i++)
 	{
 		pBitstream = pInpOBUs[i].pMemAddrOfOBU;
 		uiBitstreamSize = pInpOBUs[i].uiSizeOfOBUs;
 
-		//m_pOBUParser[i]->DecodeOneOBU(pBitstream, uiBitstreamSize, bAnnexB);
 		m_pOBUParser[i]->DecodeOneOBUC(pBitstream, uiBitstreamSize, bAnnexB);
 
-		//const uint8_t **ppSource = &pInpOBUs[i].pEachOBU[0];
-		//const uint8_t *pSource = *ppSource;
+		bRwSeqHdrsFlag = m_pOBUParser[i]->getSeqHeader() != NULL;
 
-		//const uint8_t *pSource = pInpOBUs[i].pEachOBU[0];
-		//const uint8_t **ppSource = &pSource;
+		//if (bRwSeqHdrsFlag && i > 1) {
+		//	if (m_pOBUParser[0]->getSeqHeaderSize() == m_pOBUParser[i]->getSeqHeaderSize()) {
+		//		int same = memcmp(m_pOBUParser[0]->getSeqHeader(), m_pOBUParser[i]->getSeqHeader(), m_pOBUParser[i]->getSeqHeaderSize());
+		//		bool bRwSeqHdrsSame = same == 0 ? true : false;
+		//		bRwSeqHdrsFlag = bRwSeqHdrsFlag && bRwSeqHdrsSame;
+		//		if(!bRwSeqHdrsSame)
+		//			printf("Sequence memory datas are different at %d \n", i);
+		//	}
+		//	else {
+		//		bRwSeqHdrsFlag = false;
+		//		printf("Sequence memory sizes are different \n");
+		//	}
 
-		//aom_decode_frame_from_obus(&pbi, pSource, pSource + pInpOBUs[i].uiEachOBUSize[0], ppSource);
-		//aom_decode_frame_from_obus(&pbi, pInpOBUs[i].pEachOBU[0], pInpOBUs[i].pEachOBU[0] + pInpOBUs[i].uiEachOBUSize[0], &pInpOBUs[i].pEachOBU[0]);
-
-
-		//pBitstream = pInpAUs[i].pNALU[0];
-		//uiBitstreamSize = (uint32_t)(pInpAUs[i].pNALU[pInpAUs[i].uiNumOfNALU - 1] - pInpAUs[i].pNALU[0]) + pInpAUs[i].uiNALUSize[pInpAUs[i].uiNumOfNALU - 1];
-
-		//m_pHevcParser[i]->DecodeOneAU(pBitstream, uiBitstreamSize);
-
+		//}
 		//// load pointers of header information from HevcParser
+		m_OBUWriter.SetTileData(m_pOBUParser[i]->getTlieHeader(), m_pOBUParser[i]->getTlieData(), i);
 		//m_HevcWriter.SetSlice(m_pHevcParser[i]->GetSliceHeader(), m_pHevcParser[i]->GetSliceSegData(), i);
 	}
+
+	printf("");
+	if(bRwSeqHdrsFlag)
+	    m_OBUWriter.setOBUOutBuf(m_pOBUParser[0]->getSeqHeader(), m_pOBUParser[0]->getSeqHeaderSize());
+
+	m_OBUWriter.setOBUOutBuf(m_pOBUParser[0]->getFrameObu(), m_pOBUParser[0]->getFrameObuSize());
 
 	//// error handling .....
 	//if (!m_HevcWriter.ValidateParameters())
