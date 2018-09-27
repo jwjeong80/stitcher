@@ -15,8 +15,13 @@ public:
 
 	void setOBUOutBuf(const uint8_t* pMemData, uint32_t MemSize) {
 		memcpy(m_OBUOutBuf, pMemData, MemSize);
+		m_OBUOutBuf += MemSize;
 		m_OBUOutSize += MemSize;
 	}
+
+	uint8_t* getOBUOutBuf() { return m_OBUOutBuf;}
+	uint8_t* getOBUOutBufStart() { return m_pOBUOutBufStart; }
+	uint32_t getOBUOutBufSize() { return m_OBUOutSize; }
 
 private:
 	bool                m_bAnnexB;
@@ -32,5 +37,6 @@ private:
 	const uint8_t      m_TemporalDelimiter[2] = { 0x12, 0x00 };
 
 	uint8_t* m_OBUOutBuf;
+	uint8_t* m_pOBUOutBufStart;
 	uint32_t m_OBUOutSize;
 };

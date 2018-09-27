@@ -247,7 +247,7 @@ uint32_t __stdcall OnBStrStitchProc(void* pThis)
 	}
 
 	int j = 0;
-	while (!b_ctrl_c)// && uiNumFrames < 5)
+	while (!b_ctrl_c && j < 5)//&& uiNumFrames < 5)
 	{
 		// extract access units from bitstreams
 		for (int i = 0; i < (int)uiNumBStreams; i++)
@@ -274,6 +274,7 @@ uint32_t __stdcall OnBStrStitchProc(void* pThis)
 			pAV1OBU[i].pMemAddrOfOBU = pInputBitBuffers[i];
 			pAV1OBU[i].uiSizeOfOBUs = buffer_size;
 			
+			cout << j << " ";
 			cout << i << " ";
 			OBU_TYPE type = (OBU_TYPE)((pAV1OBU[i].pMemAddrOfOBU[0] & 0x78) >> 3);
 			cout << type << " ";
@@ -291,12 +292,16 @@ uint32_t __stdcall OnBStrStitchProc(void* pThis)
 			//pAV1OBU[i].pEachOBU[pAV1OBU[i].uiNumOfOBU] = NULL;  // Indicate last NALU boundary
 			//pAV1OBU[i].uiEachOBUSize[pAV1OBU[i].uiNumOfOBU] = 0;
 		}
-		
+		j++;
 		// stitch all access units into single stream (HevcAuOut updated)
 		//uiStitchFlags = (uiNumFrames) ? NO_INPUT_FLAGS_AV1 : WRITE_GLB_HDRS_AV1;
 		uiStitchFlags = 0;
 		if (Keti_AV1_Stitcher_StitchSingleOBU(pcBStrStitcherHandle, pAV1OBU, uiStitchFlags, &AV1OBUOut))
 		{
+
+			FILE *outfile = fopen("merge.obu", "ab");
+			fwrite(AV1OBUOut.pMemAddrOfOBU, 1, AV1OBUOut.uiSizeOfOBUs, outfile);
+			fclose(outfile);
 			//uint32_t uiObuSize = 0;
 			//for (uint32_t i = 0; i < HevcAuOut.uiNumOfNALU; i++) {
 			//	uiAuSize += HevcAuOut.uiNALUSize[i];

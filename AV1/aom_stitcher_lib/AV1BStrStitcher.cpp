@@ -105,6 +105,9 @@ int CAV1BStrStitcher::StitchSingleOBU(const OBU *pInpOBUs, uint32_t uiAnnexBFlag
 
 	m_OBUWriter.setOBUOutBuf(m_pOBUParser[0]->getFrameObu(), m_pOBUParser[0]->getFrameObuSize());
 
+	pOutOBUs->pMemAddrOfOBU = m_OBUWriter.getOBUOutBufStart();
+	pOutOBUs->uiSizeOfOBUs = m_OBUWriter.getOBUOutBufSize();
+
 	//// error handling .....
 	//if (!m_HevcWriter.ValidateParameters())
 	//{

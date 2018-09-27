@@ -34,9 +34,11 @@ void COBUWriter::Create(uint32_t uiNumTileRows, uint32_t uiNumTileCols, bool bAn
 
 	m_OBUOutBuf = new uint8_t[8192];
 	m_OBUOutSize = 0;
+	m_pOBUOutBufStart = m_OBUOutBuf;
 
 	memcpy(m_OBUOutBuf, m_TemporalDelimiter, 2);
 	m_OBUOutSize = 2;
+	m_OBUOutBuf += m_OBUOutSize;
 	//m_PsManager.Init();
 	//m_CavlcEncoder.setBitstream(&(m_OutputNALU.m_Bitstream));
 }
@@ -51,6 +53,10 @@ void COBUWriter::Destroy()
 
 		//SAFE_DELETES(m_pNewSliceSegHdrs[i]);
 	}
+	m_pOBUOutBufStart = NULL;
+	printf("Destroy\n");
+	if(m_OBUOutBuf)
+	    m_OBUOutBuf -= m_OBUOutSize;
 	SAFE_DELETES(m_OBUOutBuf);
 	//m_PsManager.Destroy();
 }
