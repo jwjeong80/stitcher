@@ -79,6 +79,22 @@ public:
 	
 	~COBUInfo();
 	
+	void initilize() {
+		m_pSeqHdrOBuStartAddr = NULL;
+		m_pFrameObuStartAddr = NULL;
+		m_pFrameHeaderStartAddr = NULL;
+		m_pTileHeaderStartAddr = NULL;
+		m_pTileDataStartAddr = NULL;
+		m_SeqHdrSize = -1;
+		m_SeqHdrObuHdrSize = -1;
+		m_SeqHeaderDataSize = -1;
+		m_FrameObuSize = -1;
+		m_FrameObuHdrSize = -1;
+		m_FrameHeaderSize = -1;
+		m_TileHeaderSize = -1;
+		m_TileDataSize = -1;
+	}
+
 	ObuHeader obu_header[10];
 
 	const uint8_t* m_pSeqHdrOBuStartAddr;  //sequence header OBU start address  
@@ -152,6 +168,11 @@ public:
 
 	bool                DecodeOneOBU(uint8_t *pBitStream, uint32_t uiBitstreamSize, bool AnnexB);
 
+	void OBUInfoInitilize() {
+		for(int i=0; i< 10; i++)
+			m_ObuInfo[i].initilize();
+	}
+
 	bool ValidObuType(int obu_type);
 
 	aom_codec_err_t ReadObuHeader(struct AomReadBitBuffer *rb,
@@ -183,20 +204,21 @@ public:
 	 uint32_t ReadFrameHeaderObu(CBitReader *rb, const uint8_t *data, int trainiling_bits_present);
 	 int32_t ReadTileGroupHeader(CBitReader *rb, int *start_tile, int *end_tile, int tile_start_implicit);
 	 
-	 const uint8_t *getSeqHeader() { return m_ObuInfo.m_pSeqHdrOBuStartAddr; }
-	 int getSeqHeaderSize() { return m_ObuInfo.m_SeqHdrSize; }
+	 const uint8_t *getSeqHeader(int idx) { return m_ObuInfo[idx].m_pSeqHdrOBuStartAddr; }
+	 int getSeqHeaderSize(int idx) { return m_ObuInfo[idx].m_SeqHdrSize; }
 
-	 const uint8_t *getFrameObu() { return m_ObuInfo.m_pFrameObuStartAddr; }
-	 const uint8_t *getTlieHeader() { return m_ObuInfo.m_pTileHeaderStartAddr; }
-	 const uint8_t *getTlieData() { return m_ObuInfo.m_pTileDataStartAddr; }
+	 const uint8_t *getFrameObu(int idx) { return m_ObuInfo[idx].m_pFrameObuStartAddr; }
+	 const uint8_t *getTlieHeader(int idx) { return m_ObuInfo[idx].m_pTileHeaderStartAddr; }
+	 const uint8_t *getTlieData(int idx) { return m_ObuInfo[idx].m_pTileDataStartAddr; }
 
-	 int getFrameObuSize() { return m_ObuInfo.m_FrameObuSize; }
+	 int getFrameObuSize(int idx) { return m_ObuInfo[idx].m_FrameObuSize; }
+	 int getNumberObu() { return m_NumObu; }
 
 private:
 	CSequenceHeader      m_ShBuffer;
 	CFrameHeader         m_FhBuffer;
 	//ShManager            m_ShManager;                // Parameter Set Manager
-	COBUInfo             m_ObuInfo;                   // storage for slice header & segment data
+	COBUInfo             m_ObuInfo[10];                   // storage for slice header & segment data
 	ObuHeader            m_ObuHeader[10];
 	int                  m_NumObu;
 	//TComInputBitstream	m_SliceSegData;             // storage for slice segment data

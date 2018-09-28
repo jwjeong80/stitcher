@@ -10,8 +10,12 @@ COBUWriter::COBUWriter(void)
 	for (int i = 0; i < MAX_STREAMS; i++)
 	{
 		m_pSequenceHdrs[i] = NULL;
-		m_pTileHdrs[i] = NULL;
-		m_pTileDatas[i] = NULL;
+
+		for (int j = 0; j < MAX_OBUS_IN_TU; j++)		
+		{
+			m_pTileHdrs[i][j] = NULL;
+			m_pTileDatas[i][j] = NULL;
+		}
 	}
 }
 
@@ -36,9 +40,6 @@ void COBUWriter::Create(uint32_t uiNumTileRows, uint32_t uiNumTileCols, bool bAn
 	m_OBUOutSize = 0;
 	m_pOBUOutBufStart = m_OBUOutBuf;
 
-	memcpy(m_OBUOutBuf, m_TemporalDelimiter, 2);
-	m_OBUOutSize = 2;
-	m_OBUOutBuf += m_OBUOutSize;
 	//m_PsManager.Init();
 	//m_CavlcEncoder.setBitstream(&(m_OutputNALU.m_Bitstream));
 }
@@ -48,22 +49,25 @@ void COBUWriter::Destroy()
 	for (int i = 0; i < MAX_STREAMS; i++)
 	{
 		m_pSequenceHdrs[i] = NULL;
-		m_pTileHdrs[i] = NULL;
-		m_pTileDatas[i] = NULL;
+		for (int j = 0; j < MAX_OBUS_IN_TU; j++)
+		{
+			m_pTileHdrs[i][j] = NULL;
+			m_pTileDatas[i][j] = NULL;
+
+		}
 
 		//SAFE_DELETES(m_pNewSliceSegHdrs[i]);
 	}
 	m_pOBUOutBufStart = NULL;
 	printf("Destroy\n");
-	if(m_OBUOutBuf)
-	    m_OBUOutBuf -= m_OBUOutSize;
+
 	SAFE_DELETES(m_OBUOutBuf);
 	//m_PsManager.Destroy();
 }
 
 
-void COBUWriter::SetTileData(const uint8_t *pTileHeader, const uint8_t* pTileData, int32_t iParserIdx) {
+void COBUWriter::SetTileData(const uint8_t *pTileHeader, const uint8_t* pTileData, int32_t iParserIdx, int iObuIdx) {
 	// get only pointers
-	m_pTileHdrs[iParserIdx] = pTileHeader;
-	m_pTileDatas[iParserIdx] = pTileData;
+	m_pTileHdrs[iParserIdx][iObuIdx] = pTileHeader;
+	m_pTileDatas[iParserIdx][iObuIdx] = pTileData;
 }

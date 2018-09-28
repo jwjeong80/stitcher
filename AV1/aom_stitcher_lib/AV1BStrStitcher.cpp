@@ -66,6 +66,8 @@ int CAV1BStrStitcher::StitchSingleOBU(const OBU *pInpOBUs, uint32_t uiAnnexBFlag
 	uint8_t *pBitstream;
 	uint32_t uiBitstreamSize;
 
+	m_OBUWriter.initialize();
+
 	//bool bRwGlbHdrsFlag = uiStitchFlags & WRITE_GLB_HDRS;
 	bool bAnnexB = uiAnnexBFlags;
 	bool bRwSeqHdrsFlag;
@@ -73,12 +75,13 @@ int CAV1BStrStitcher::StitchSingleOBU(const OBU *pInpOBUs, uint32_t uiAnnexBFlag
 	 //decode all OBUs
 	for (int i = 0; i < m_uiNumParsers; i++)
 	{
+		m_pOBUParser[i]->OBUInfoInitilize();
 		pBitstream = pInpOBUs[i].pMemAddrOfOBU;
 		uiBitstreamSize = pInpOBUs[i].uiSizeOfOBUs;
 
 		m_pOBUParser[i]->DecodeOneOBUC(pBitstream, uiBitstreamSize, bAnnexB);
 
-		bRwSeqHdrsFlag = m_pOBUParser[i]->getSeqHeader() != NULL;
+		bRwSeqHdrsFlag = m_pOBUParser[i]->getSeqHeader(1) != NULL;
 
 		//if (bRwSeqHdrsFlag && i > 1) {
 		//	if (m_pOBUParser[0]->getSeqHeaderSize() == m_pOBUParser[i]->getSeqHeaderSize()) {
@@ -95,17 +98,24 @@ int CAV1BStrStitcher::StitchSingleOBU(const OBU *pInpOBUs, uint32_t uiAnnexBFlag
 
 		//}
 		//// load pointers of header information from HevcParser
-		m_OBUWriter.SetTileData(m_pOBUParser[i]->getTlieHeader(), m_pOBUParser[i]->getTlieData(), i);
+		int j = bRwSeqHdrsFlag ? 2 : 1;
+		for(; j < m_pOBUParser[i]->getNumberObu(); j++)
+			m_OBUWriter.SetTileData(m_pOBUParser[i]->getTlieHeader(0), m_pOBUParser[i]->getTlieData(0), i, j);
 		//m_HevcWriter.SetSlice(m_pHevcParser[i]->GetSliceHeader(), m_pHevcParser[i]->GetSliceSegData(), i);
 	}
 
 	printf("");
+
+	m_OBUWriter.WriteTemporalDelimiter();
+
 	if(bRwSeqHdrsFlag)
-	    m_OBUWriter.setOBUOutBuf(m_pOBUParser[0]->getSeqHeader(), m_pOBUParser[0]->getSeqHeaderSize());
+	    m_OBUWriter.SetOBUOutBuf(m_pOBUParser[0]->getSeqHeader(1), m_pOBUParser[0]->getSeqHeaderSize(1));
 
-	m_OBUWriter.setOBUOutBuf(m_pOBUParser[0]->getFrameObu(), m_pOBUParser[0]->getFrameObuSize());
+	int j = bRwSeqHdrsFlag ? 2 : 1;
+	for (; j < m_pOBUParser[0]->getNumberObu(); j++)
+		m_OBUWriter.SetOBUOutBuf(m_pOBUParser[0]->getFrameObu(j), m_pOBUParser[0]->getFrameObuSize(j));
 
-	pOutOBUs->pMemAddrOfOBU = m_OBUWriter.getOBUOutBufStart();
+	pOutOBUs->pMemAddrOfOBU = m_OBUWriter.getOBUOutBuf();
 	pOutOBUs->uiSizeOfOBUs = m_OBUWriter.getOBUOutBufSize();
 
 	//// error handling .....

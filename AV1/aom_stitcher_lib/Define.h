@@ -25,6 +25,7 @@
 // definitions
 #define MAX_BIT_SIZE    (1024*1024)
 #define MAX_STREAMS     (440) /* 20x22 */
+#define MAX_OBUS_IN_TU     (10) /* 20x22 */
 
 #define DISABLE_LINES       0
 #define STITCHER_FEATURES   1

@@ -247,7 +247,7 @@ uint32_t __stdcall OnBStrStitchProc(void* pThis)
 	}
 
 	int j = 0;
-	while (!b_ctrl_c && j < 5)//&& uiNumFrames < 5)
+	while (!b_ctrl_c && j < 100)//&& uiNumFrames < 5)
 	{
 		// extract access units from bitstreams
 		for (int i = 0; i < (int)uiNumBStreams; i++)
@@ -298,7 +298,6 @@ uint32_t __stdcall OnBStrStitchProc(void* pThis)
 		uiStitchFlags = 0;
 		if (Keti_AV1_Stitcher_StitchSingleOBU(pcBStrStitcherHandle, pAV1OBU, uiStitchFlags, &AV1OBUOut))
 		{
-
 			FILE *outfile = fopen("merge.obu", "ab");
 			fwrite(AV1OBUOut.pMemAddrOfOBU, 1, AV1OBUOut.uiSizeOfOBUs, outfile);
 			fclose(outfile);

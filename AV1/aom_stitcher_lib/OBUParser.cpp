@@ -274,15 +274,15 @@ bool COBUParser::DecodeOneOBUC(uint8_t *pBitStream, uint32_t uiBitstreamSize, bo
 
 		switch (obu_header.type) {
 		case OBU_SEQUENCE_HEADER:
-			m_ObuInfo.m_pSeqHdrOBuStartAddr = data;
-			m_ObuInfo.m_SeqHdrObuHdrSize = bytes_read;
+			m_ObuInfo[m_NumObu].m_pSeqHdrOBuStartAddr = data;
+			m_ObuInfo[m_NumObu].m_SeqHdrObuHdrSize = bytes_read;
 			break;
 		case OBU_FRAME_HEADER:
 		case OBU_REDUNDANT_FRAME_HEADER:
 		case OBU_FRAME:
-			m_ObuInfo.m_pFrameObuStartAddr = data;
-			m_ObuInfo.m_FrameObuHdrSize = bytes_read;
-			m_ObuInfo.m_FrameObuSize = bytes_read + payload_size;
+			m_ObuInfo[m_NumObu].m_pFrameObuStartAddr = data;
+			m_ObuInfo[m_NumObu].m_FrameObuHdrSize = bytes_read;
+			m_ObuInfo[m_NumObu].m_FrameObuSize = bytes_read + payload_size;
 			break;
 		default:
 			break;
@@ -305,18 +305,8 @@ bool COBUParser::DecodeOneOBUC(uint8_t *pBitStream, uint32_t uiBitstreamSize, bo
 			return -1;
 		}
 
-		//if (obu_header.type != OBU_TEMPORAL_DELIMITER &&
-		//	obu_header.type != OBU_SEQUENCE_HEADER &&
-		//	obu_header.type != OBU_PADDING) {
-		//	// don't decode obu if it's not in current operating mode
-		//	if (!IsObuInCurrentOperatingPoint(pbi, obu_header)) {
-		//		data += payload_size;
-		//		continue;
-		//	}
-		//}
+
 		CBitReader rb(data, data + payload_size, 0);
-		//InitReadBitBuffer(&rb, data, data + payload_size);
-		//av1_init_read_bit_buffer(pbi, &rb, data, data + payload_size);
 
 		m_ObuHeader[m_NumObu] = obu_header;
 		int tile_group_header_size = 0;
@@ -334,8 +324,9 @@ bool COBUParser::DecodeOneOBUC(uint8_t *pBitStream, uint32_t uiBitstreamSize, bo
 				seq_header_received = 1;
 
 				remain_sz -= seq_header_size;
-				m_ObuInfo.m_SeqHeaderDataSize = seq_header_size;
-				m_ObuInfo.m_SeqHdrSize = m_ObuInfo.m_SeqHdrObuHdrSize + seq_header_size;
+				m_ObuInfo[m_NumObu].m_SeqHeaderDataSize = seq_header_size;
+				m_ObuInfo[m_NumObu].m_SeqHdrSize = m_ObuInfo[m_NumObu].m_SeqHdrObuHdrSize + seq_header_size;
+				data += seq_header_size;
 			}
 			else {
 				// Seeing another sequence header, skip as all sequence headers are
@@ -349,14 +340,16 @@ bool COBUParser::DecodeOneOBUC(uint8_t *pBitStream, uint32_t uiBitstreamSize, bo
 		case OBU_REDUNDANT_FRAME_HEADER:
 		case OBU_FRAME:
 			// Only decode first frame header received
-			m_ObuInfo.m_pFrameHeaderStartAddr = data;
+			m_ObuInfo[m_NumObu].m_pFrameHeaderStartAddr = data;
 
 			if (!m_SeenFrameHeader /*||
 				(cm->large_scale_tile && !pbi->camera_frame_header_ready)*/) {
 				frame_header_size = ReadFrameHeaderObu(               //obu.c
 					&rb, data, obu_header.type != OBU_FRAME);
+				data += frame_header_size;
 				m_SeenFrameHeader = 1;
-				m_ObuInfo.m_FrameHeaderSize = frame_header_size;
+
+				m_ObuInfo[m_NumObu].m_FrameHeaderSize = frame_header_size;
 				//if (!pbi->ext_tile_debug && cm->large_scale_tile)
 				//	pbi->camera_frame_header_ready = 1;
 			}
@@ -375,10 +368,9 @@ bool COBUParser::DecodeOneOBUC(uint8_t *pBitStream, uint32_t uiBitstreamSize, bo
 			//pbi->frame_header_size = frame_header_size;
 
 			if (obu_header.type != OBU_FRAME) break;
-			obu_payload_offset = frame_header_size;
 			// Byte align the reader before reading the tile group.
-			if (rb.ByteAlignment()) return -1;
-
+			if (rb.ByteAlignment()) 
+				return -1;
 			remain_sz -= frame_header_size;
 		case OBU_TILE_GROUP:
 			
@@ -389,19 +381,25 @@ bool COBUParser::DecodeOneOBUC(uint8_t *pBitStream, uint32_t uiBitstreamSize, bo
 				return -1;
 			}
 
-			m_ObuInfo.m_pTileHeaderStartAddr = data;
+			m_ObuInfo[m_NumObu].m_pTileHeaderStartAddr = data;
 
 			int start_tile, end_tile;
 			tile_group_header_size = ReadTileGroupHeader(&rb, &start_tile, &end_tile, obu_header.type == OBU_FRAME);
 			if (tile_group_header_size == -1 || rb.ByteAlignment())
 				return 0;
 			data += tile_group_header_size;
-			remain_sz -= tile_group_header_size;
-			one_tile_size = remain_sz;
+			m_ObuInfo[m_NumObu].m_pTileDataStartAddr = data;
+
+			//we do not decode tiles 
+			one_tile_size = payload_size - frame_header_size - tile_group_header_size;
+			remain_sz -= one_tile_size;
+			data += one_tile_size;
+			if (remain_sz > 0)
+				printf("");
+			
 			//get_tile_buffer;
-			m_ObuInfo.m_TileHeaderSize = tile_group_header_size;
-			m_ObuInfo.m_pTileDataStartAddr = data;
-			m_ObuInfo.m_TileDataSize = one_tile_size;
+			m_ObuInfo[m_NumObu].m_TileHeaderSize = tile_group_header_size;
+			m_ObuInfo[m_NumObu].m_TileDataSize = one_tile_size;
 			break;
 		default:
 			// Skip unrecognized OBUs
@@ -410,21 +408,25 @@ bool COBUParser::DecodeOneOBUC(uint8_t *pBitStream, uint32_t uiBitstreamSize, bo
 		}
 
 		// Check that the signalled OBU size matches the actual amount of data read
-		if (decoded_payload_size > payload_size) {
-			//cm->error.error_code = AOM_CODEC_CORRUPT_FRAME;
-			return -1;
-		}
+		//if (decoded_payload_size > payload_size) {
+		//	//cm->error.error_code = AOM_CODEC_CORRUPT_FRAME;
+		//	return -1;
+		//}
+
 
 		// If there are extra padding bytes, they should all be zero
-		while (decoded_payload_size < payload_size) {
-			uint8_t padding_byte = data[decoded_payload_size++];
-			if (padding_byte != 0) {
-				//cm->error.error_code = AOM_CODEC_CORRUPT_FRAME;
-				return -1;
-			}
-		}
+		//while (decoded_payload_size < payload_size) {
+		//	uint8_t padding_byte = data[decoded_payload_size++];
+		//	if (padding_byte != 0) {
+		//		//cm->error.error_code = AOM_CODEC_CORRUPT_FRAME;
+		//		return -1;
+		//	}
+		//}
 		m_NumObu++;
-		data += payload_size;
+
+		if (remain_sz == 0)
+			frame_decoding_finished = 1;
+
 	}
 
 	return frame_decoding_finished;
@@ -590,7 +592,7 @@ uint32_t COBUParser::ReadFrameHeaderObu(CBitReader *rb, const uint8_t *data, int
 
 		frame_type = (FRAME_TYPE)rb->AomRbReadLiteral(2);
 		pFh->FhParserFrameType(frame_type);
-		int FrameIsIntra = (frame_type == INTRA_ONLY_FRAME || frame_type == KEY_FRAME);
+		FrameIsIntra = (frame_type == INTRA_ONLY_FRAME || frame_type == KEY_FRAME);
 
 		show_frame = rb->AomRbReadBit();
 		pFh->FhParserShowFrame(show_frame);
@@ -797,7 +799,7 @@ uint32_t COBUParser::ReadFrameHeaderObu(CBitReader *rb, const uint8_t *data, int
 			pFh->FhParserInterpolationFilter(rb);
 			pFh->FhParserIsMotionModeSwitchable(rb->AomRbReadBit());
 
-			if (pFh->FhReadErrorResilientMode() || pSh->ShReadEnableRefFrameMvs()) {
+			if (pFh->FhReadErrorResilientMode() || !pSh->ShReadEnableRefFrameMvs()) {
 				pFh->FhParserUseRefFrameMvs(0);
 			}
 			else {
