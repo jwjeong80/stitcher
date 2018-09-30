@@ -6,6 +6,7 @@
 //#include "av1/common/timing.h"
 #include "bit_reader_c.h"
 #include "Define.h"
+#include "bit_writer.h"
 //#include "av1_common.h"
 ///////////////////////////////////////////////////////////////////////////////
 
@@ -15,17 +16,6 @@
 // Profile 2.  8-bit and 10-bit 4:2:2
 //            12-bit  4:0:0, 4:2:2 and 4:4:4
 // Since we have three bits for the profiles, it can be extended later.
-typedef enum BITSTREAM_PROFILE {
-	PROFILE_0,
-	PROFILE_1,
-	PROFILE_2,
-	MAX_PROFILES,
-} BITSTREAM_PROFILE;
-
-typedef struct BitstreamLevel {
-	uint8_t major;
-	uint8_t minor;
-} BitstreamLevel;
 
 
 /*!\brief List of supported color primaries */
@@ -146,7 +136,7 @@ public:
 		return seq_level_idx < 24 || seq_level_idx == 31;
 	}
 
-
+	// Sequence header parser 
 	void ShParserProfile(BITSTREAM_PROFILE seq_profile) { m_seq_profile = seq_profile; }
 	void ShParserStillPicture(int still_picture) { m_still_picture = still_picture; }
 	void ShParserReducedStillPictureHdr(int reduced_still_picture_header) { m_reduced_still_picture_header = reduced_still_picture_header; }
@@ -165,236 +155,15 @@ public:
 		m_initial_display_delay_minus_1[op_num] = initial_display_delay_minus_1;
 	}
 	void ShParserFilmGrainParamsPresent(int film_grain_params_present) { m_film_grain_params_present = film_grain_params_present; }
-
-	int ShParserSeqLevelIdx(int idx, CBitReader *rb) {
-		const uint8_t seq_level_idx = rb->AomRbReadLiteral(LEVEL_BITS);
-		if (!is_valid_seq_level_idx(seq_level_idx)) return 0;
-		m_seq_level_idx[idx].major = (seq_level_idx >> LEVEL_MINOR_BITS) + LEVEL_MAJOR_MIN;
-		m_seq_level_idx[idx].minor = seq_level_idx & ((1 << LEVEL_MINOR_BITS) - 1);
-		return 1;
-	}
-
-	void ShParserTimingInfoHeader(CBitReader *rb) {
-		m_timing_info.num_units_in_display_tick = rb->AomRbReadUnsignedLiteral(32);  // Number of units in a display tick
-		m_timing_info.time_scale = rb->AomRbReadUnsignedLiteral(32);  // Time scale
-		if (m_timing_info.num_units_in_display_tick == 0 || m_timing_info.time_scale == 0) {
-			printf("num_units_in_display_tick and time_scale must be greater than 0. \n");
-		}
-		m_timing_info.equal_picture_interval = rb->AomRbReadBit();  // Equal picture interval bit
-		if (m_timing_info.equal_picture_interval) {
-			m_timing_info.num_ticks_per_picture_minus_1 = rb->AomRbReadUvlc() + 1;  // ticks per picture
-			if (m_timing_info.num_ticks_per_picture_minus_1 == 0) {
-				printf("num_ticks_per_picture_minus_1 cannot be (1 << 32) − 1.");
-			}
-		}
-	}
-	void ShParserDecoderModelInfo(CBitReader *rb) {
-		m_decoder_model_info.buffer_delay_length_minus_1 = rb->AomRbReadLiteral(5) + 1;
-		m_decoder_model_info.num_units_in_decoding_tick = rb->AomRbReadUnsignedLiteral(32);  // Number of units in a decoding tick
-		m_decoder_model_info.buffer_removal_time_length_minus_1 = rb->AomRbReadLiteral(5) + 1;
-		m_decoder_model_info.frame_presentation_time_length_minus_1 = rb->AomRbReadLiteral(5) + 1;
-	}
-
-	void ShParserOperatingParametersInfo(int op_num, CBitReader *rb) {
-		// The cm->op_params array has MAX_NUM_OPERATING_POINTS + 1 elements.
-		if (op_num > MAX_NUM_OPERATING_POINTS) {
-			printf("AV1 does not support %d decoder model operating points",op_num + 1);
-		}
-
-		m_op_params[op_num].decoder_buffer_delay = rb->AomRbReadUnsignedLiteral(m_decoder_model_info.buffer_delay_length_minus_1);
-		m_op_params[op_num].encoder_buffer_delay = rb->AomRbReadUnsignedLiteral(m_decoder_model_info.buffer_delay_length_minus_1);
-		m_op_params[op_num].low_delay_mode_flag = rb->AomRbReadBit();
-	}
-
-	void ShParserSequenceInfo(CBitReader *rb) {
-		m_frame_width_bits_minus_1 = rb->AomRbReadLiteral(4);
-		m_frame_height_bits_minus_1 = rb->AomRbReadLiteral(4);
-		m_max_frame_width_minus_1 = rb->AomRbReadLiteral(m_frame_width_bits_minus_1+1);
-		m_max_frame_height_minus_1 = rb->AomRbReadLiteral(m_frame_height_bits_minus_1 + 1);
-
-		if(m_reduced_still_picture_header)
-			m_frame_id_numbers_present_flag = 0;
-		else
-			m_frame_id_numbers_present_flag = rb->AomRbReadBit();
-
-		if (m_frame_id_numbers_present_flag)
-		{
-			m_delta_frame_id_length_minus_2 = rb->AomRbReadLiteral(4);
-			m_additional_frame_id_length_minus_1 = rb->AomRbReadLiteral(3);
-		}
-		m_use_128x128_superblock = rb->AomRbReadBit();
-		m_enable_filter_intra = rb->AomRbReadBit();
-		m_enable_intra_edge_filter = rb->AomRbReadBit();
-
-		if (m_reduced_still_picture_header) {
-			m_enable_interintra_compound = 0;
-			m_enable_masked_compound = 0;
-			m_enable_warped_motion = 0;
-			m_enable_dual_filter = 0;
-			m_enable_order_hint = 0;
-			m_enable_jnt_comp = 0;
-			m_enable_ref_frame_mvs = 0;
-			m_seq_force_screen_content_tools = 2;  // SELECT_SCREEN_CONTENT_TOOLS
-			m_seq_force_integer_mv = 2;            // SELECT_INTEGER_MV
-			m_OrderHintBits = 0;
-		}
-		else {
-			m_enable_interintra_compound = rb->AomRbReadBit();
-			m_enable_masked_compound = rb->AomRbReadBit();
-			m_enable_warped_motion = rb->AomRbReadBit();
-			m_enable_dual_filter = rb->AomRbReadBit();
-			m_enable_order_hint = rb->AomRbReadBit();
-
-			if (m_enable_order_hint) {
-				m_enable_jnt_comp = rb->AomRbReadBit();
-				m_enable_ref_frame_mvs = rb->AomRbReadBit();
-			}
-			else {
-				m_enable_jnt_comp = 0;
-				m_enable_ref_frame_mvs = 0;
-			}
-			m_seq_choose_screen_content_tools = rb->AomRbReadBit();
-
-			if (m_seq_choose_screen_content_tools)
-				m_seq_force_screen_content_tools = 2; // SELECT_SCREEN_CONTENT_TOOLS
-			else
-				m_seq_force_screen_content_tools = rb->AomRbReadBit();
-
-			if (m_seq_force_screen_content_tools > 0) {
-				m_seq_choose_integer_mv = rb->AomRbReadBit();
-
-				if (m_seq_choose_integer_mv)
-					m_seq_force_integer_mv = 2;            // SELECT_INTEGER_MV
-				else
-					m_seq_force_integer_mv = rb->AomRbReadBit();
-			}
-			else {
-				m_seq_force_integer_mv = 2;            // SELECT_INTEGER_MV
-			}
-
-			if (m_enable_order_hint) {
-				m_order_hint_bits_minus_1 = rb->AomRbReadLiteral(3);
-				m_OrderHintBits = m_order_hint_bits_minus_1 + 1;
-			}
-			else {
-				m_OrderHintBits = 0;
-			}
-		}
-
-		m_enable_superres = rb->AomRbReadBit();
-		m_enable_cdef = rb->AomRbReadBit();
-		m_enable_restoration = rb->AomRbReadBit();
-	}
-
-	void ShParserColorConfig(CBitReader *rb) {
-		
-		m_high_bitdepth = rb->AomRbReadBit();
-
-		if (m_seq_profile == PROFILE_2 && m_high_bitdepth) {
-			m_twelve_bit = rb->AomRbReadBit();
-			m_BitDepth = m_twelve_bit ? AOM_BITS_12 : AOM_BITS_10;
-		}
-		else if(m_seq_profile <= PROFILE_2){
-			m_BitDepth = m_twelve_bit ? AOM_BITS_10 : AOM_BITS_8;
-		}
-		else {
-			printf("Unsupported profile/bit-depth combination");
-		}
-
-		if (m_seq_profile == PROFILE_1)
-			m_mono_chrome = 0;
-		else
-			m_mono_chrome = rb->AomRbReadBit();
-
-		m_NumPlanes = m_mono_chrome ? 1 : 3;
-		m_color_description_present_flag = rb->AomRbReadBit();
-
-		if (m_color_description_present_flag) {
-			m_color_primaries = rb->AomRbReadLiteral(8);
-			m_transfer_characteristics = rb->AomRbReadLiteral(8);
-			m_matrix_coefficients = rb->AomRbReadLiteral(8);
-		}
-		else {
-			m_color_primaries = AOM_CICP_CP_UNSPECIFIED;
-			m_transfer_characteristics = AOM_CICP_TC_UNSPECIFIED;
-			m_matrix_coefficients = AOM_CICP_MC_UNSPECIFIED;
-		}
-
-		if (m_mono_chrome) {
-			// [16,235] (including xvycc) vs [0,255] range
-			m_color_range = rb->AomRbReadBit();
-			m_subsampling_y = m_subsampling_x = 1;
-			m_chroma_sample_position = AOM_CSP_UNKNOWN;
-			m_separate_uv_delta_q = 0;
-			return;
-		}
-		else if (m_color_primaries == AOM_CICP_CP_BT_709 &&
-			m_transfer_characteristics == AOM_CICP_TC_SRGB &&
-			m_matrix_coefficients == AOM_CICP_MC_IDENTITY) {
-			// It would be good to remove this dependency.
-			m_subsampling_y = m_subsampling_x = 0;
-			m_color_range = 1;  // assume full color-range
-			if (!(m_seq_profile == PROFILE_1 || 
-				(m_seq_profile == PROFILE_2 && m_seq_profile == AOM_BITS_12))) {
-				 printf("sRGB colorspace not compatible with specified profile \n");
-			}
-		}
-		else {
-			// [16,235] (including xvycc) vs [0,255] range
-			m_color_range = rb->AomRbReadBit();
-			if (m_seq_profile == PROFILE_0) {
-				// 420 only
-				m_subsampling_x = m_subsampling_y = 1;
-			}
-			else if (m_seq_profile == PROFILE_1) {
-				// 444 only
-				m_subsampling_x = m_subsampling_y = 0;
-			}
-			else {
-				assert(m_seq_profile == PROFILE_2);
-				
-				if (m_BitDepth == AOM_BITS_12) {
-					m_subsampling_x = rb->AomRbReadBit();
-					if (m_subsampling_x)
-						m_subsampling_y = rb->AomRbReadBit(); // 422 or 420
-					else
-						m_subsampling_y = 0;  // 444
-				}
-				else {
-					// 422
-					m_subsampling_x = 1;
-					m_subsampling_y = 0;
-				}
-			}
-			if (m_matrix_coefficients == AOM_CICP_MC_IDENTITY &&
-				(m_subsampling_x || m_subsampling_y)) {
-				printf("Identity CICP Matrix incompatible with non 4:4:4 color sampling\n");
-			}
-			if (m_subsampling_x && m_subsampling_y) {
-				m_chroma_sample_position = rb->AomRbReadLiteral(2);
-			}
-		}
-		m_separate_uv_delta_q = rb->AomRbReadBit();
+	int ShParserSeqLevelIdx(int idx, CBitReader *rb);
+	void ShParserTimingInfoHeader(CBitReader *rb);
+	void ShParserDecoderModelInfo(CBitReader *rb);
+	void ShParserOperatingParametersInfo(int op_num, CBitReader *rb);
+	void ShParserSequenceInfo(CBitReader *rb);
+	void ShParserColorConfig(CBitReader *rb);
 
 
-		if (!(m_subsampling_x == 0 && m_subsampling_y == 0) &&
-			!(m_subsampling_x == 1 && m_subsampling_y == 1) &&
-			!(m_subsampling_x == 1 && m_subsampling_y == 0)) {
-			printf("Only 4:4:4, 4:2:2 and 4:2:0 are currently supported, "
-				"%d %d subsampling is not supported.\n",
-				m_subsampling_x, m_subsampling_y);
-		}
-
-	}
-
-
-
-	//int AreSeqHeadersConsistent(const SequenceHeader *seq_params_old,
-	//	const SequenceHeader *seq_params_new) {
-	//	return !memcmp(seq_params_old, seq_params_new, sizeof(CSequenceHeader));
-	//}
-
-
+	// Sequence header reader 
 	BITSTREAM_PROFILE ShReadProfile() { return m_seq_profile; }
 	int AvReadStillPicture() { return m_still_picture; }
 	int ShReadReducedStillPictureHdr() { return m_reduced_still_picture_header; }
@@ -414,13 +183,8 @@ public:
 	int ShReadEqualPictureInterval() { return m_timing_info.equal_picture_interval; }
 	int ShReadSeqForceScreenContentTools() { return m_seq_force_screen_content_tools; }
 
-	int ShReadSeqLevelIdxMajor(int idx) {
-		return m_seq_level_idx[idx].major;
-	}	
-	int ShReadSeqLevelIdxMinor(int idx) {
-		return m_seq_level_idx[idx].minor;
-	}
-
+	int ShReadSeqLevelIdxMajor(int idx) {return m_seq_level_idx[idx].major;}	
+	int ShReadSeqLevelIdxMinor(int idx) {return m_seq_level_idx[idx].minor;}
 	decoder_model_info_t ShReadDecoderModelInfo() { return m_decoder_model_info; }
 	
 	int ShReadFilmGrainParamsPresent() { return m_film_grain_params_present; }
@@ -443,7 +207,29 @@ public:
 	int ShReadSubsamplingX() { return m_subsampling_x; }
 	int ShReadSubsamplingY() { return m_subsampling_y; }
 	int ShReadEnableWarpedMotion() { return m_enable_warped_motion; }
+
+	int ShReadFrameWidth() { return m_FrameWidth; }
+	int ShReadFrameHeight() { return m_FrameHeight; }
 	
+	// Sequence header writer 
+	uint32_t write_sequence_header_obu(uint8_t *const dst, int bit_buffer_offset);
+	void write_profile(BITSTREAM_PROFILE profile, CBitWriter *wb);
+	void write_bitstream_level(BitstreamLevel bl, CBitWriter *wb);
+	uint8_t major_minor_to_seq_level_idx(BitstreamLevel bl);
+	void write_timing_info_header(CBitWriter *wb);
+	void write_decoder_model_info(CBitWriter *wb);
+	void write_dec_model_op_parameters(CBitWriter *wb, int op_num);
+	void write_sequence_header(CBitWriter *wb);
+	void write_color_config(CBitWriter *wb);
+
+	static void InitilizeFrameSize() {
+		m_EntireFrameWidth = 0;
+		m_EntireFrameHeight = 0;
+	}
+
+	int m_ParserIdx;
+	uint32_t m_uiNumTileRows;
+	uint32_t m_uiNumTileCols;
 private:
 	BITSTREAM_PROFILE m_seq_profile;
 	int m_still_picture;
@@ -468,6 +254,8 @@ private:
 	int m_frame_height_bits_minus_1;
 	int m_max_frame_width_minus_1;
 	int m_max_frame_height_minus_1;
+	int m_FrameWidth;
+	int m_FrameHeight;
 	int m_frame_id_numbers_present_flag;
 	int m_delta_frame_id_length_minus_2;
 	int m_additional_frame_id_length_minus_1;
@@ -511,6 +299,9 @@ private:
 	int m_NumPlanes;
 	int m_OrderHintBits;
 
+
+	static int m_EntireFrameWidth;
+	static int m_EntireFrameHeight;
 };
 
 class ShManager

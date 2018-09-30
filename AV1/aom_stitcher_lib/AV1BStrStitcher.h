@@ -38,6 +38,9 @@ private:
 	COBUParser * m_pOBUParser[MAX_STREAMS];
 	COBUWriter  m_OBUWriter;
 
+	uint32_t    *m_uiWidths;
+	uint32_t    *m_uiHeights;
+
 protected:
 
 };

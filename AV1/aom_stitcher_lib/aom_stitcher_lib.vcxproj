@@ -126,6 +126,8 @@
     <ClCompile Include="av1_common.cpp" />
     <ClCompile Include="bit_reader.cpp" />
     <ClCompile Include="bit_reader_c.cpp" />
+    <ClCompile Include="bit_writer.cpp" />
+    <ClCompile Include="FrameHeader.cpp" />
     <ClCompile Include="OBUParser.cpp" />
     <ClCompile Include="OBUWriter.cpp" />
     <ClCompile Include="SequenceHeader.cpp" />
@@ -138,6 +140,7 @@
     <ClInclude Include="av1_common.h" />
     <ClInclude Include="bit_reader.h" />
     <ClInclude Include="bit_reader_c.h" />
+    <ClInclude Include="bit_writer.h" />
     <ClInclude Include="CommonDef.h" />
     <ClInclude Include="config.h" />
     <ClInclude Include="Define.h" />

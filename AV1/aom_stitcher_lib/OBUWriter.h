@@ -2,6 +2,7 @@
 #include <stdint.h>
 #include "Define.h"
 #include <string.h>
+#include "bitstream_writer.h"
 
 class COBUWriter
 {
@@ -31,12 +32,15 @@ public:
 	uint8_t* getOBUOutBufStart() { return m_pOBUOutBufStart; }
 	uint32_t getOBUOutBufSize() { return m_OBUOutSize; }
 
-
+	uint32_t write_obu_header(int obu_type, int obu_extension, uint8_t *const dst, int bit_buffer_offset);
+	size_t obu_memmove(uint32_t obu_header_size, uint32_t obu_payload_size, uint8_t *data, int bit_buffer_offset);
+	int write_uleb_obu_size(uint32_t obu_header_size, uint32_t obu_payload_size, uint8_t *dest);
 
 private:
 	bool                m_bAnnexB;
 	uint32_t            m_uiNumTileRows;
 	uint32_t            m_uiNumTileCols;
+
 	uint32_t            m_uiNumParsers;                     // check number of parsers
 
 	const uint8_t*      m_pSequenceHdrs[MAX_STREAMS];       // only pointer for tile headers

@@ -70,9 +70,12 @@ COBUParser::~COBUParser(void)
 	Destroy();
 }
 
-void COBUParser::Create()
+void COBUParser::Create(uint32_t uiNumTileRows, uint32_t uiNumTileCols)
 {
 	m_NumObu = 0;
+
+	m_uiNumTileRows = uiNumTileRows;
+	m_uiNumTileCols = uiNumTileCols;
 	//m_ShManager.Init();
 }
 
@@ -233,8 +236,9 @@ aom_codec_err_t COBUParser::AomReadObuHeaderAndSize(const uint8_t *data,
 	return AOM_CODEC_OK;
 }
 
-bool COBUParser::DecodeOneOBUC(uint8_t *pBitStream, uint32_t uiBitstreamSize, bool bAnnexB) {
-	//AV1_COMMON *const cm = &pbi->common;
+bool COBUParser::DecodeOneOBUC(uint8_t *pBitStream, uint32_t uiBitstreamSize, bool bAnnexB, int iParserIdx) {
+	m_ParserIdx = iParserIdx;
+
 	int frame_decoding_finished = 0;
 	int is_first_tg_obu_received = 1;
 	uint32_t frame_header_size = 0;
@@ -252,11 +256,11 @@ bool COBUParser::DecodeOneOBUC(uint8_t *pBitStream, uint32_t uiBitstreamSize, bo
 
 	//if (data_end < data) {
 	//	cm->error.error_code = AOM_CODEC_CORRUPT_FRAME;
-	//	return -1;
 	//}
 
 	// Reset pbi->camera_frame_header_ready to 0 if cm->large_scale_tile = 0.
 	//if (!cm->large_scale_tile) pbi->camera_frame_header_ready = 0;
+	
 
 	// decode frame as a series of OBUs
 	while (!frame_decoding_finished) {
@@ -442,6 +446,9 @@ uint32_t COBUParser::ReadSequenceHeaderObu(CBitReader *rb)
 
 	const uint32_t saved_bit_offset = rb->AomRbReadBitOffset();
 	CSequenceHeader *pSh = &m_ShBuffer;
+	pSh->m_ParserIdx = m_ParserIdx;
+	pSh->m_uiNumTileRows = m_uiNumTileRows;
+	pSh->m_uiNumTileCols = m_uiNumTileCols;
 
 	pSh->ShParserProfile(BITSTREAM_PROFILE(rb->AomRbReadLiteral(PROFILE_BITS)));
 
@@ -551,6 +558,7 @@ uint32_t COBUParser::ReadFrameHeaderObu(CBitReader *rb, const uint8_t *data, int
 	if (pSh->ShReadFrameIdNumbersPresentFlag()) {
 		idLen = pSh->ShReadAdditionalFrameIdLengthMinus1() +
 			pSh->ShReadDeltaFrameIdLengthMinus2() + 3;
+		pFh->FhSetIdLen(idLen);
 	}
 	int allFrames = (1 << NUM_REF_FRAMES) - 1;
 
@@ -917,4 +925,205 @@ int32_t COBUParser::ReadTileGroupHeader(CBitReader *rb, int *start_tile, int *en
 
 	return ((rb->AomRbReadBitOffset() - saved_bit_offset + 7) >> 3);
 	//return 1;
+}
+
+
+void COBUParser::RewriteFrameHeaderObu(uint8_t *const dst, int bit_buffer_offset) {
+	CFrameHeader *pFh = &m_FhBuffer;
+	CSequenceHeader *pSh = &m_ShBuffer;
+	CBitWriter wb(dst, bit_buffer_offset);
+
+	//Sequence Header
+	int reduced_still_picture_header = pSh->ShReadReducedStillPictureHdr();
+	int decoder_model_info_present_flag = pSh->ShReadDecoderModelInfoPresentFlag();
+	int equal_picture_interval = pSh->ShReadEqualPictureInterval();
+	decoder_model_info_t decoder_model_info = pSh->ShReadDecoderModelInfo();
+	int frame_id_numbers_present_flag = pSh->ShReadFrameIdNumbersPresentFlag();
+	int seq_force_screen_content_tools = pSh->ShReadSeqForceScreenContentTools();
+	int seq_force_integer_mv = pSh->ShReadSeqForceIntegerMv();
+	int OrderHintBits = pSh->ShReadOrderHintBits();
+	int enable_order_hint = pSh->ShReadEnableOrderHint();
+
+	//Frame Header
+	int show_existing_frame = pFh->FhReadShowExistingFrame();
+	int show_frame = pFh->FhReadShowFrame();
+	FRAME_TYPE frame_type = pFh->FhReadFrameType();
+	int frame_to_show_map_idx = pFh->FhReadFrameToShowMapIdx();
+	int idLen = pFh->FhReadIdLen();
+	int error_resilient_mode = pFh->FhReadErrorResilientMode();
+	int disable_cdf_update = pFh->FhReadDisableCdfUpdate();
+	int allow_screen_content_tools = pFh->FhReadAllowScreenContentTools();
+	int force_integer_mv = pFh->FhReadForceIntegerMv();
+	int current_frame_id = pFh->FhReadCurrentFrameId();
+	int frame_size_override_flag = pFh->FhReadFrameSizeOverrideFlag();
+	int order_hint = pFh->FhReadOrderHint();
+	int FrameIsIntra = frame_type == INTRA_ONLY_FRAME || frame_type == KEY_FRAME;
+	int primary_ref_frame = pFh->FhReadPrimaryRefFrame();
+
+	if (reduced_still_picture_header) {
+		assert(show_existing_frame == 0);
+		assert(show_frame == 1);
+		assert(frame_type == KEY_FRAME);
+	}
+	else {
+		wb.aom_wb_write_bit(show_existing_frame);  // show_existing_frame
+		if (show_existing_frame == 1) {
+			wb.aom_wb_write_bit(frame_to_show_map_idx);
+
+			if (decoder_model_info_present_flag && !equal_picture_interval) {
+				pFh->write_temporal_point_info(decoder_model_info.frame_presentation_time_length_minus_1, &wb);	
+			}
+
+			if (frame_id_numbers_present_flag) {
+				wb.aom_wb_write_literal(pFh->FhReadDisplayFrameId(), idLen);
+			}
+			return;
+		}
+
+		wb.aom_wb_write_literal(frame_type, 2);
+		wb.aom_wb_write_bit(show_frame);
+
+		if (show_frame) {
+			if (decoder_model_info_present_flag && !equal_picture_interval) {
+				pFh->write_temporal_point_info(decoder_model_info.frame_presentation_time_length_minus_1, &wb);
+			}
+		}
+		else {
+			wb.aom_wb_write_bit(pFh->FhReadShowableFrame());
+		}
+
+		if (frame_type == SWITCH_FRAME) {
+			assert(error_resilient_mode);
+		}
+		else if (!(frame_type == KEY_FRAME && show_frame)) {
+			wb.aom_wb_write_bit(error_resilient_mode);
+		}
+	}
+	wb.aom_wb_write_bit(disable_cdf_update);
+
+	if (seq_force_screen_content_tools == 2) {
+		wb.aom_wb_write_bit(allow_screen_content_tools);
+	}
+	else {
+		assert(allow_screen_content_tools == seq_force_screen_content_tools);
+	}
+
+	if (allow_screen_content_tools) {
+		if (seq_force_integer_mv == 2) {
+			wb.aom_wb_write_bit(force_integer_mv);
+		}
+		else {
+			assert(force_integer_mv == seq_force_integer_mv);
+		}
+	}
+	else {
+		assert(force_integer_mv == 0);
+	}
+
+	if (frame_id_numbers_present_flag) {
+		wb.aom_wb_write_literal(current_frame_id, idLen);
+	}
+
+	if (frame_type != SWITCH_FRAME) {
+		wb.aom_wb_write_bit(frame_size_override_flag);
+	}
+
+	wb.aom_wb_write_literal(order_hint, OrderHintBits);
+	
+	if (!error_resilient_mode && !FrameIsIntra) {
+		wb.aom_wb_write_literal(primary_ref_frame, PRIMARY_REF_BITS);
+	}
+
+	if (decoder_model_info_present_flag) {
+		int buffer_removal_time_present = pFh->FhReadBufferRemovalTimePresentFlag();
+		wb.aom_wb_write_bit(buffer_removal_time_present);
+
+		if (buffer_removal_time_present) {
+			int operating_points_cnt_minus_1 = pSh->ShReadOperatingPointsCntMinus1();
+			for (int op_num = 0; op_num < operating_points_cnt_minus_1 + 1; op_num++) {
+				if (pSh->ShReadDecoderModelPresentForThisOp(op_num)) {
+
+					int opPtIdc = pSh->ShReadOperatingPointIdc(op_num);
+					int inTemporalLayer = (opPtIdc >> m_ObuHeader[m_NumObu].temporal_layer_id) & 1;
+					int	inSpatialLayer = (opPtIdc >> (m_ObuHeader[m_NumObu].spatial_layer_id + 8)) & 1;
+
+					int buffer_removal_time = pFh->FhReadBufferRemovalTime(op_num);
+					if (opPtIdc == 0 || (inTemporalLayer && inSpatialLayer)) {
+						wb.aom_wb_write_unsigned_literal(buffer_removal_time, decoder_model_info.buffer_delay_length_minus_1 + 1);
+
+						if (buffer_removal_time == 0) {
+							printf(	"buffer_removal_time overflowed \n");
+						}
+					}
+				}
+			}
+		}
+	}
+
+	int refresh_frame_flags = pFh->FhReadRefreshFrameFlags();
+	if (frame_type == KEY_FRAME) {
+		if (show_frame) {  // unshown keyframe (forward keyframe)
+			wb.aom_wb_write_literal(refresh_frame_flags, REF_FRAMES);
+		}
+		else {
+			assert(refresh_frame_flags == 0xFF);
+		}
+	}
+	else {
+		if (frame_type == INTRA_ONLY_FRAME) {
+			assert(refresh_frame_flags != 0xFF);
+			int updated_fb = -1;
+			for (int i = 0; i < REF_FRAMES; i++) {
+				// If more than one frame is refreshed, it doesn't matter which one
+				// we pick, so pick the first.
+				if (refresh_frame_flags & (1 << i)) {
+					updated_fb = i;
+					break;
+				}
+			}
+			assert(updated_fb >= 0);
+			//cm->fb_of_context_type[cm->frame_context_idx] = updated_fb;
+			wb.aom_wb_write_literal(refresh_frame_flags, REF_FRAMES);
+		}
+		else if (frame_type == INTER_FRAME || frame_type == SWITCH_FRAME) {
+			if (frame_type == INTER_FRAME) {
+				wb.aom_wb_write_literal(refresh_frame_flags, REF_FRAMES);
+			}
+			else {
+				assert(frame_type == SWITCH_FRAME && refresh_frame_flags == 0xFF);
+			}
+			int updated_fb = -1;
+			for (int i = 0; i < REF_FRAMES; i++) {
+				// If more than one frame is refreshed, it doesn't matter which one
+				// we pick, so pick the first.
+				if (refresh_frame_flags & (1 << i)) {
+					updated_fb = i;
+					break;
+				}
+			}
+			// large scale tile sometimes won't refresh any fbs
+			//if (updated_fb >= 0) {
+			//	cm->fb_of_context_type[cm->frame_context_idx] = updated_fb;
+			//}
+
+			//if (!cpi->refresh_frame_mask) {
+			//	// NOTE: "cpi->refresh_frame_mask == 0" indicates that the coded frame
+			//	//       will not be used as a reference
+			//	cm->is_reference_frame = 0;
+			//}
+		}
+	}
+
+	if (!FrameIsIntra || refresh_frame_flags != 0xFF) {
+		// Write all ref frame order hints if error_resilient_mode == 1
+		if (error_resilient_mode && enable_order_hint) {
+			for (int ref_idx = 0; ref_idx < REF_FRAMES; ref_idx++) {
+				// Get buffer index
+				// Write order hint to bit stream
+				wb.aom_wb_write_literal(pFh->FhReadRefOrderHint(ref_idx), OrderHintBits);
+			}
+		}
+	}
+
+
 }

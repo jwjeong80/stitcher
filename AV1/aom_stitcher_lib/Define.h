@@ -11,6 +11,7 @@
 *****************************************************************************/
 
 #pragma once
+#include <stdint.h>
 /*!\brief Decorator indicating that given struct/union/enum is packed */
 #ifndef ATTRIBUTE_PACKED
 #if defined(__GNUC__) && __GNUC__
@@ -30,6 +31,7 @@
 #define DISABLE_LINES       0
 #define STITCHER_FEATURES   1
 
+#define REF_FRAMES 8
 
 #define MAX_NUM_TEMPORAL_LAYERS 8
 #define MAX_NUM_SPATIAL_LAYERS 4
@@ -69,6 +71,7 @@
 
 #define AOMMIN(x, y) (((x) < (y)) ? (x) : (y))
 #define AOMMAX(x, y) (((x) > (y)) ? (x) : (y))
+#define IMPLIES(a, b) (!(a) || (b))  //  Logical 'a implies b' (or 'a -> b')
 
 #define MAX_SEGMENTS 8
 #define TOTAL_REFS_PER_FRAME 8
@@ -121,3 +124,15 @@ typedef enum ATTRIBUTE_PACKED {
 	SWITCHABLE = SWITCHABLE_FILTERS + 1, /* the last switchable one */
 	EXTRA_FILTERS = INTERP_FILTERS_ALL - SWITCHABLE_FILTERS,
 } InterpFilter;
+
+typedef enum BITSTREAM_PROFILE {
+	PROFILE_0,
+	PROFILE_1,
+	PROFILE_2,
+	MAX_PROFILES,
+} BITSTREAM_PROFILE;
+
+typedef struct BitstreamLevel {
+	uint8_t major;
+	uint8_t minor;
+} BitstreamLevel;

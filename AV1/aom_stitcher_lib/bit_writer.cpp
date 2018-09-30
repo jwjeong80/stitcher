@@ -80,3 +80,13 @@ void CBitWriter::aom_wb_write_uvlc(uint32_t v) {
   aom_wb_write_literal(0, leading_zeroes >> 1);
   aom_wb_write_unsigned_literal(v, (leading_zeroes + 1) >> 1);
 }
+
+void CBitWriter::add_trailing_bits() {
+	if (aom_wb_is_byte_aligned()) {
+		aom_wb_write_literal(0x80, 8);
+	}
+	else {
+		// assumes that the other bits are already 0s
+		aom_wb_write_bit(1);
+	}
+}

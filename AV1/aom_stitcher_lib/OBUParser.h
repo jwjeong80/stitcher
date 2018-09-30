@@ -163,7 +163,7 @@ public:
 	COBUParser(void);
 	~COBUParser(void);
 
-	void                Create();
+	void                Create(uint32_t uiNumTileRows, uint32_t uiNumTileCols);
 	void                Destroy();
 
 	bool                DecodeOneOBU(uint8_t *pBitStream, uint32_t uiBitstreamSize, bool AnnexB);
@@ -174,6 +174,15 @@ public:
 	}
 
 	bool ValidObuType(int obu_type);
+
+	void SequenceHeaderCopy(CSequenceHeader *SourceSh) {
+		memcpy(&m_ShBuffer, SourceSh, sizeof(CSequenceHeader));
+	}
+
+	COBUParser& operator=(const COBUParser& rhs) {
+		memcpy(&this->m_ShBuffer, &rhs.m_ShBuffer, sizeof(CSequenceHeader));
+		return *this;
+	}
 
 	aom_codec_err_t ReadObuHeader(struct AomReadBitBuffer *rb,
 		int is_annexb, ObuHeader *header);
@@ -196,13 +205,20 @@ public:
 	 uint32_t ReadSequenceHeaderObu(CBitReader *rb);
 
 
-	 bool DecodeOneOBUC(uint8_t *pBitStream, uint32_t uiBitstreamSize, bool bAnnexB);
+	 bool DecodeOneOBUC(uint8_t *pBitStream, uint32_t uiBitstreamSize, bool bAnnexB, int iParserIdx);
 	 aom_codec_err_t ReadObuHeaderC(CBitReader *rb, int is_annexb, ObuHeader *header);
 	 aom_codec_err_t AomReadObuHeaderC(uint8_t *buffer, size_t buffer_length,
 		 size_t *consumed, ObuHeader *header, int is_annexb);
 
 	 uint32_t ReadFrameHeaderObu(CBitReader *rb, const uint8_t *data, int trainiling_bits_present);
 	 int32_t ReadTileGroupHeader(CBitReader *rb, int *start_tile, int *end_tile, int tile_start_implicit);
+
+	 uint32_t RewriteSequenceHeaderObu(uint8_t *const dst, int bit_buffer_offset) {
+		 CSequenceHeader *pSh = &m_ShBuffer;
+		 return pSh->write_sequence_header_obu(dst, bit_buffer_offset);
+	 }
+	 void RewriteFrameHeaderObu(uint8_t *const dst, int bit_buffer_offset); 
+
 	 
 	 const uint8_t *getSeqHeader(int idx) { return m_ObuInfo[idx].m_pSeqHdrOBuStartAddr; }
 	 int getSeqHeaderSize(int idx) { return m_ObuInfo[idx].m_SeqHdrSize; }
@@ -214,6 +230,11 @@ public:
 	 int getFrameObuSize(int idx) { return m_ObuInfo[idx].m_FrameObuSize; }
 	 int getNumberObu() { return m_NumObu; }
 
+	 int getFrameWidth() { return m_ShBuffer.ShReadFrameWidth(); }
+	 int getFrameHeight() { return m_ShBuffer.ShReadFrameHeight(); }
+
+	 CSequenceHeader getSeqHeaderBuffer() { return m_ShBuffer; }
+
 private:
 	CSequenceHeader      m_ShBuffer;
 	CFrameHeader         m_FhBuffer;
@@ -221,6 +242,9 @@ private:
 	COBUInfo             m_ObuInfo[10];                   // storage for slice header & segment data
 	ObuHeader            m_ObuHeader[10];
 	int                  m_NumObu;
+	int                  m_ParserIdx;
+	uint32_t            m_uiNumTileRows;
+	uint32_t            m_uiNumTileCols;
 	//TComInputBitstream	m_SliceSegData;             // storage for slice segment data
 
 	//Bool                m_bShowLogsFlag;

@@ -7,8 +7,9 @@ class CBitWriter
 public:
 
 	CBitWriter() : m_wb_bit_buffer(NULL), m_wb_bit_offset(0) {}
-	//CBitWriter(const uint8_t *bit_buffer, uint32_t bit_offset): m_wb_bit_buffer(bit_buffer), m_wb_bit_offset(bit_offset) {}
+	CBitWriter(uint8_t *bit_buffer, uint32_t bit_offset): m_wb_bit_buffer(bit_buffer), m_wb_bit_offset(bit_offset) {}
 
+	void add_trailing_bits();
 
 	int aom_wb_is_byte_aligned();
 
