@@ -1202,8 +1202,15 @@ void COBUParser::RewriteFrameHeaderObu(uint8_t *const dst, int bit_buffer_offset
 	pFh->encode_delta_q_and_lf_params(&wb);
 
 	int AllLossless = 0; //Lossless is not allowed
+
 	pFh->encode_loopfilter(NumPlanes, &wb);
 	pFh->encode_cdef(NumPlanes, pSh->ShReadEnableCdef(), &wb);
+	pFh->encode_restoration_mode(NumPlanes, pSh->ShReadEnableRestoration(), pSh->ShReadUse128x128Superblock(),
+		pSh->ShReadSubsamplingX(), pSh->ShReadSubsamplingY(), &wb);
+	pFh->write_tx_mode(&wb);
 
+	if (!FrameIsIntra) {
+		wb.aom_wb_write_bit(pFh->FhReadReferenceSelect());
+	}
 }
 

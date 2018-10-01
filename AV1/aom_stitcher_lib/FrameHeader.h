@@ -167,6 +167,8 @@ public:
 	int FhReadAllowHighPrecisionMv() { return m_allow_high_precision_mv; }
 	int FhReadIsMotionModeSwitchable() { return m_is_motion_mode_switchable; }
 	int FhReadDisableFrameEndUpdateCdf() { return m_disable_frame_end_update_cdf; }
+	int FhReadReferenceSelect() { return m_reference_select; }
+	
 
 	//write uncompressed header
 	uint32_t write_uncompressed_header_obu(uint8_t *const dst, int bit_buffer_offset);
@@ -182,6 +184,9 @@ public:
 	void encode_delta_q_and_lf_params(CBitWriter *wb);
 	void encode_loopfilter(int NumPlanes, CBitWriter *wb);
 	void encode_cdef(int NumPlanes, int enable_cdef, CBitWriter *wb);
+	void encode_restoration_mode(int NumPlanes, int enable_restoration, int use_128x128_superblock,
+		int subsampling_x, int subsampling_y, CBitWriter *wb);
+	void write_tx_mode(CBitWriter *wb);
 
 	int av1_superres_scaled() {
 		// Note: for some corner cases (e.g. cm->width of 1), there may be no scaling
@@ -315,7 +320,7 @@ private:
 	int m_cdef_uv_sec_strength[8];
 	int m_CdefDamping;
 
-	int m_lr_type;
+	int m_lr_type[3];
 	int m_lr_unit_shift;
 	int m_lr_unit_extra_shift;
 	int m_lr_uv_shift;

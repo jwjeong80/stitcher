@@ -432,8 +432,8 @@ void CFrameHeader::FhParserLrParams(int NumPlanes, int enable_restoration, int u
 	m_usesChromaLr = 0;
 
 	for (int i = 0; i < NumPlanes; i++) {
-		m_lr_type = rb->AomRbReadLiteral(2);
-		m_FrameRestorationType[i] = Remap_Lr_Type[m_lr_type];
+		m_lr_type[i] = rb->AomRbReadLiteral(2);
+		m_FrameRestorationType[i] = Remap_Lr_Type[m_lr_type[i]];
 		if (m_FrameRestorationType[i] != RESTORE_NONE) {
 			m_UsesLr = 1;
 			if (i > 0) {
@@ -820,4 +820,50 @@ void CFrameHeader::encode_cdef(int NumPlanes, int enable_cdef, CBitWriter *wb) {
 			wb->aom_wb_write_literal(m_cdef_uv_sec_strength[i], 2);
 		}
 	}
+}
+
+
+void CFrameHeader::encode_restoration_mode(int NumPlanes, int enable_restoration, int use_128x128_superblock,
+	int subsampling_x, int subsampling_y, CBitWriter *wb) {
+	
+	if (enable_restoration) 
+		return;
+	if (m_allow_intrabc) 
+		return;
+
+	int all_none = 1, chroma_none = 1;
+	for (int p = 0; p < NumPlanes; ++p) {
+		wb->aom_wb_write_literal(m_lr_type[p], 2);
+	}
+	if (m_UsesLr) {
+		const int sb_size =  use_128x128_superblock ? 128 : 64;
+		assert(m_LoopRestorationSize[0] >= sb_size);
+	
+		if (sb_size == 64) {
+			wb->aom_wb_write_bit(m_LoopRestorationSize[0] > 64);
+		}
+		if (m_LoopRestorationSize[0] > 64) {
+			wb->aom_wb_write_bit(m_LoopRestorationSize[0] > 128);
+		}
+	}
+
+	if (NumPlanes > 1) {
+		int s = AOMMIN(subsampling_x, subsampling_y);
+		if (s && m_usesChromaLr) {
+			wb->aom_wb_write_bit(m_LoopRestorationSize[1] != m_LoopRestorationSize[0]);
+
+			assert(m_LoopRestorationSize[1] == m_LoopRestorationSize[0] ||
+				m_LoopRestorationSize[1] == (m_LoopRestorationSize[0] >> s));
+			assert(m_LoopRestorationSize[2] == m_LoopRestorationSize[1]);
+		}
+	}
+}
+
+
+ void CFrameHeader::write_tx_mode(CBitWriter *wb) {
+	if (m_CodedLossless) {
+		m_TxMode = ONLY_4X4;
+		return;
+	}
+	wb->aom_wb_write_bit(m_TxMode == TX_MODE_SELECT);
 }
