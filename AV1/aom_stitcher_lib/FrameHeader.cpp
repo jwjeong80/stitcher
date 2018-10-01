@@ -1,5 +1,5 @@
 #include "FrameHeader.h"
-
+#include <stdio.h>
 
 void CFrameHeader::FhSetRefValandOrderHint()
 {
@@ -376,13 +376,13 @@ void CFrameHeader::FhParserLoopFilterParams(int NumPlanes, CBitReader *rb) {
 
 		if (m_loop_filter_delta_update == 1) {
 			for (int i = 0; i < TOTAL_REFS_PER_FRAME; i++) {
-				m_update_ref_delta = rb->AomRbReadBit();
-				if (m_update_ref_delta == 1)
+				m_update_ref_delta[i] = rb->AomRbReadBit();
+				if (m_update_ref_delta[i] == 1)
 					m_loop_filter_ref_deltas[i] = rb->AomRbReadInvSignedLiteral(6);
 			}
 			for (int i = 0; i < 2; i++) {
-				m_update_mode_delta = rb->AomRbReadBit();
-				if (m_update_mode_delta == 1)
+				m_update_mode_delta[i] = rb->AomRbReadBit();
+				if (m_update_mode_delta[i] == 1)
 					m_loop_filter_mode_deltas[i] = rb->AomRbReadInvSignedLiteral(6);
 			}
 		}
@@ -406,14 +406,14 @@ void CFrameHeader::FhParserCdefParams(int NumPlanes, int enable_cdef, CBitReader
 	for (int i = 0; i < (1 << m_cdef_bits); i++) {
 		m_cdef_y_pri_strength[i] = rb->AomRbReadLiteral(4);
 		m_cdef_y_sec_strength[i] = rb->AomRbReadLiteral(2);
-		if (m_cdef_y_sec_strength[i] == 3)
-			m_cdef_y_sec_strength[i] += 1;
+		//if (m_cdef_y_sec_strength[i] == 3)
+		//	m_cdef_y_sec_strength[i] += 1;
 
 		if (NumPlanes > 1) {
 			m_cdef_uv_pri_strength[i] = rb->AomRbReadLiteral(4);
 			m_cdef_uv_sec_strength[i] = rb->AomRbReadLiteral(2);
-			if (m_cdef_uv_sec_strength[i] == 3)
-				m_cdef_uv_sec_strength[i] += 1;
+			//if (m_cdef_uv_sec_strength[i] == 3)
+			//	m_cdef_uv_sec_strength[i] += 1;
 		}
 	}
 }
@@ -594,4 +594,230 @@ uint32_t CFrameHeader::write_uncompressed_header_obu(uint8_t *const dst, int bit
 void  CFrameHeader::write_temporal_point_info(int frame_presentation_time_length_minus_1, CBitWriter *wb) {
 	int n = frame_presentation_time_length_minus_1 + 1;
 	wb->aom_wb_write_unsigned_literal(m_frame_presentation_time, n);
+}
+
+void CFrameHeader::write_frame_size(int num_bits_width, int num_bits_height, int enable_superres, CBitWriter *wb) {
+	
+	if (m_frame_size_override_flag) {
+		wb->aom_wb_write_literal(m_frame_width_minus_1, num_bits_width + 1);
+		wb->aom_wb_write_literal(m_frame_height_minus_1, num_bits_height + 1);
+	}
+
+	write_superres_scale(enable_superres, wb);
+	write_render_size(wb);
+}
+
+void CFrameHeader::write_superres_scale(int enable_superres, CBitWriter *wb) {
+
+	if (!enable_superres) {
+		assert(m_SuperresDenom == SUPERRES_NUM);
+		return;
+	}
+
+	// First bit is whether to to scale or not
+	if (m_SuperresDenom == SUPERRES_NUM) {
+		wb->aom_wb_write_bit(0);  // no scaling
+	}
+	else {
+		wb->aom_wb_write_bit(1);  // scaling, write scale factor
+		assert(m_SuperresDenom >= SUPERRES_DENOM_MIN);
+		assert(m_SuperresDenom < SUPERRES_DENOM_MIN + (1 << SUPERRES_DENOM_BITS));
+		wb->aom_wb_write_literal(m_SuperresDenom - SUPERRES_DENOM_MIN, SUPERRES_DENOM_BITS);
+	}
+}
+
+void CFrameHeader::write_render_size(CBitWriter *wb) {
+
+	// render_and_frame_size_different is always 0 
+	assert(m_render_and_frame_size_different == 0);
+	wb->aom_wb_write_bit(0);
+	//if (scaling_active) {
+	//	aom_wb_write_literal(wb, cm->render_width - 1, 16);
+	//	aom_wb_write_literal(wb, cm->render_height - 1, 16);
+	//}
+}
+
+
+void CFrameHeader::write_frame_size_with_refs(CBitWriter *wb) {
+	//unimplmented
+	//AV1_COMMON *const cm = &cpi->common;
+	//int found = 0;
+
+	//MV_REFERENCE_FRAME ref_frame;
+	//for (ref_frame = LAST_FRAME; ref_frame <= ALTREF_FRAME; ++ref_frame) {
+	//	YV12_BUFFER_CONFIG *cfg = get_ref_frame_buffer(cpi, ref_frame);
+
+	//	if (cfg != NULL) {
+	//		found = cm->superres_upscaled_width == cfg->y_crop_width &&
+	//			cm->superres_upscaled_height == cfg->y_crop_height;
+	//		found &= cm->render_width == cfg->render_width &&
+	//			cm->render_height == cfg->render_height;
+	//	}
+	//	aom_wb_write_bit(wb, found);
+	//	if (found) {
+	//		write_superres_scale(cm, wb);
+	//		break;
+	//	}
+	//}
+
+	//if (!found) {
+	//	int frame_size_override = 1;  // Always equal to 1 in this function
+	//	write_frame_size(cm, frame_size_override, wb);
+	//}
+}
+
+void CFrameHeader::write_frame_interp_filter(CBitWriter *wb) {
+	wb->aom_wb_write_bit(m_is_filter_switchable);
+	if (!m_is_filter_switchable) {
+		wb->aom_wb_write_literal(m_interpolation_filter, 2);
+	}
+}
+//void CFrameHeader::write_tile_info(struct aom_write_bit_buffer *saved_wb,
+//	struct aom_write_bit_buffer *wb) {
+//	write_tile_info_max_tile(cm, wb);
+//
+//	*saved_wb = *wb;
+//	if (cm->tile_rows * cm->tile_cols > 1) {
+//		// tile id used for cdf update
+//		aom_wb_write_literal(wb, 0, cm->log2_tile_cols + cm->log2_tile_rows);
+//		// Number of bytes in tile size - 1
+//		aom_wb_write_literal(wb, 3, 2);
+//	}
+//}
+
+void CFrameHeader::write_delta_q(int delta_q, CBitWriter *wb) {
+	
+	if (delta_q != 0) {
+		wb->aom_wb_write_bit(1);
+		wb->aom_wb_write_inv_signed_literal(delta_q, 6);
+	}
+	else {
+		wb->aom_wb_write_bit(0);
+	}
+}
+
+
+void CFrameHeader::encode_quantization(int NumPlanes, int separate_uv_delta_q, CBitWriter *wb) {
+
+	wb->aom_wb_write_literal(m_base_q_idx, QINDEX_BITS);
+	write_delta_q(m_DeltaQYDc, wb);
+	if (NumPlanes > 1) {
+		if (separate_uv_delta_q) 
+			wb->aom_wb_write_bit(m_diff_uv_delta);
+		
+		write_delta_q(m_DeltaQUDc, wb);
+		write_delta_q(m_DeltaQUAc, wb);
+		if (m_diff_uv_delta) {
+			write_delta_q(m_DeltaQVDc, wb);
+			write_delta_q(m_DeltaQVAc, wb);
+		}
+	}
+	wb->aom_wb_write_bit(m_using_qmatrix);
+
+	if (m_using_qmatrix) {
+		wb->aom_wb_write_literal(m_qm_y, QM_LEVEL_BITS);
+		wb->aom_wb_write_literal(m_qm_u, QM_LEVEL_BITS);
+		if (!separate_uv_delta_q)
+			assert(m_qm_u == m_qm_v);
+		else
+			wb->aom_wb_write_literal(m_qm_v, QM_LEVEL_BITS);
+	}
+}
+
+
+void CFrameHeader::encode_segmentation(CBitWriter *wb) {
+
+	wb->aom_wb_write_bit(m_segmentation_enabled);
+	assert(m_segmentation_enabled == 0);
+	printf("Segmentation is not allowed!!\n");
+	if (!m_segmentation_enabled)
+		return;
+}
+
+void CFrameHeader::encode_delta_q_and_lf_params(CBitWriter *wb) {
+
+	if (m_delta_q_present)
+		assert(m_base_q_idx > 0);
+	if (m_base_q_idx > 0) {
+		wb->aom_wb_write_bit(m_delta_q_present);
+		if (m_delta_q_present) {
+			//wb->aom_wb_write_literal(get_msb(m_delta_q_res), 2);  //?
+			wb->aom_wb_write_literal(m_delta_q_res, 2);
+			//xd->current_qindex = cm->base_qindex;
+			if (m_allow_intrabc)
+				assert(m_delta_lf_present == 0);
+			else
+				wb->aom_wb_write_bit(m_delta_lf_present);
+			if (m_delta_lf_present) {
+				//wb->aom_wb_write_literal(get_msb(m_delta_lf_res), 2);?
+				wb->aom_wb_write_literal(m_delta_lf_res, 2);
+				wb->aom_wb_write_bit(m_delta_lf_multi);
+				//av1_reset_loop_filter_delta(xd, av1_num_planes(cm));
+			}
+		}
+	}
+}
+
+
+void CFrameHeader::encode_loopfilter(int NumPlanes, CBitWriter *wb) {
+	assert(!m_CodedLossless);
+	if (m_allow_intrabc) 
+		return;
+
+	// Encode the loop filter level and type
+	wb->aom_wb_write_literal(m_loop_filter_level[0], 6);
+	wb->aom_wb_write_literal(m_loop_filter_level[1], 6);
+	if (NumPlanes > 1) {
+		if (m_loop_filter_level[0] || m_loop_filter_level[1]) {
+			wb->aom_wb_write_literal(m_loop_filter_level[2], 6);
+			wb->aom_wb_write_literal(m_loop_filter_level[3], 6);
+		}
+	}
+	wb->aom_wb_write_literal(m_loop_filter_sharpness, 3);
+
+	// Write out loop filter deltas applied at the MB level based on mode or
+	// ref frame (if they are enabled).
+	wb->aom_wb_write_bit(m_loop_filter_delta_enabled);
+
+	if (m_loop_filter_delta_enabled) {
+		wb->aom_wb_write_bit(m_loop_filter_delta_update);
+
+		if (m_loop_filter_delta_update) {
+			int i;
+			for (i = 0; i < REF_FRAMES; i++) {
+				wb->aom_wb_write_bit(m_update_ref_delta[i]);
+				if (m_update_ref_delta[i])
+					wb->aom_wb_write_inv_signed_literal(m_loop_filter_ref_deltas[i], 6);
+			}
+
+			for (i = 0; i < 2; i++) {
+				wb->aom_wb_write_bit(m_update_mode_delta[i]);
+				if (m_update_mode_delta[i]) 
+					wb->aom_wb_write_inv_signed_literal(m_loop_filter_mode_deltas[i], 6);
+			}
+		}
+	}
+}
+
+
+void CFrameHeader::encode_cdef(int NumPlanes, int enable_cdef, CBitWriter *wb) {
+	assert(!m_CodedLossless);
+	if (enable_cdef) 
+		return;
+	if (m_allow_intrabc) 
+		return;
+
+	wb->aom_wb_write_literal(m_cdef_damping_minus_3, 2);
+	//assert(cm->cdef_pri_damping == cm->cdef_sec_damping);
+	wb->aom_wb_write_literal(m_cdef_bits, 2);
+
+	for (int i = 0; i < (1 << m_cdef_bits); i++) {
+		wb->aom_wb_write_literal(m_cdef_y_pri_strength[i], 4);
+		wb->aom_wb_write_literal(m_cdef_y_sec_strength[i], 2);
+		
+		if (NumPlanes > 1) {
+			wb->aom_wb_write_literal(m_cdef_uv_pri_strength[i], 4);
+			wb->aom_wb_write_literal(m_cdef_uv_sec_strength[i], 2);
+		}
+	}
 }

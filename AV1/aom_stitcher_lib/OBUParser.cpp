@@ -943,6 +943,9 @@ void COBUParser::RewriteFrameHeaderObu(uint8_t *const dst, int bit_buffer_offset
 	int seq_force_integer_mv = pSh->ShReadSeqForceIntegerMv();
 	int OrderHintBits = pSh->ShReadOrderHintBits();
 	int enable_order_hint = pSh->ShReadEnableOrderHint();
+	int frame_width_bits_minus_1 = pSh->ShReadFrameWidthBitsMinus1();
+	int frame_height_bits_minus_1 = pSh->ShReadFrameHeightBitsMinus1();
+	int enable_superres = pSh->ShReadEnableSuperres();
 
 	//Frame Header
 	int show_existing_frame = pFh->FhReadShowExistingFrame();
@@ -1125,5 +1128,82 @@ void COBUParser::RewriteFrameHeaderObu(uint8_t *const dst, int bit_buffer_offset
 		}
 	}
 
+	int allow_intrabc = pFh->FhReadAllowIntrabc();
+	if (frame_type == KEY_FRAME) {
+		pFh->write_frame_size(frame_width_bits_minus_1, frame_height_bits_minus_1, enable_superres, &wb);
+		assert(!pFh->av1_superres_scaled() || !allow_intrabc);
+		if (allow_screen_content_tools && !pFh->av1_superres_scaled()) {
+			wb.aom_wb_write_bit(allow_intrabc);
+		}
+	}
+	else {
+		if (frame_type == INTRA_ONLY_FRAME) {
+			pFh->write_frame_size(frame_width_bits_minus_1, frame_height_bits_minus_1, enable_superres, &wb);
+			assert(!pFh->av1_superres_scaled() || !allow_intrabc);
+			if (allow_screen_content_tools && !pFh->av1_superres_scaled()) {
+				wb.aom_wb_write_bit(allow_intrabc);
+			}
+		}
+		else if (frame_type == INTER_FRAME || frame_type == SWITCH_FRAME) {
+			int frame_refs_short_signaling = pFh->FhParserFrameRefsShortSignaling();
+			
+			if (enable_order_hint) {
+				wb.aom_wb_write_bit(frame_refs_short_signaling);
+			}
+			if (frame_refs_short_signaling) {
+				wb.aom_wb_write_literal(pFh->FhReadLastFrameIdx(), REF_FRAMES_LOG2);
+				wb.aom_wb_write_literal(pFh->FhReadGoldFrameIdx(), REF_FRAMES_LOG2);
+			}
+
+			
+			for (int ref_frame = LAST_FRAME; ref_frame <= ALTREF_FRAME; ++ref_frame) {
+				if (!frame_refs_short_signaling) {
+					wb.aom_wb_write_literal(pFh->FhReadRefFramesIdx(ref_frame), REF_FRAMES_LOG2);
+				}
+				if (frame_id_numbers_present_flag) {
+					//Now frame_id_numbers_present_flag has to be 0
+					//not implemented
+				}
+			}
+			if (frame_size_override_flag && !error_resilient_mode) {
+				pFh->write_frame_size_with_refs(&wb); //unimplemented
+			}
+			else {
+				pFh->write_frame_size(frame_width_bits_minus_1, frame_height_bits_minus_1, enable_superres, &wb);
+			}
+
+			if (!force_integer_mv) {
+				wb.aom_wb_write_bit(pFh->FhReadAllowHighPrecisionMv());
+			}
+			pFh->write_frame_interp_filter(&wb);
+			wb.aom_wb_write_bit(pFh->FhReadIsMotionModeSwitchable());
+
+			int use_ref_frame_mvs = pFh->FhReadUseRefFrameMvs();
+			if (error_resilient_mode || !pSh->ShReadEnableRefFrameMvs()) {
+			    assert(use_ref_frame_mvs == 0);
+			}
+			else {
+				wb.aom_wb_write_bit(use_ref_frame_mvs);
+			}
+		}
+	}
+
+	const int might_bwd_adapt = !reduced_still_picture_header && !(disable_cdf_update);
+
+	if (might_bwd_adapt) {
+		wb.aom_wb_write_bit(pFh->FhReadDisableFrameEndUpdateCdf());
+	}
+
+	//write_tile_info()
+	int NumPlanes = pSh->ShReadNumPlanes();
+	int separate_uv_delta_q = pSh->ShReadSeparateUvDeltaQ();
+	pFh->encode_quantization(NumPlanes, separate_uv_delta_q, &wb);
+	pFh->encode_segmentation(&wb);
+	pFh->encode_delta_q_and_lf_params(&wb);
+
+	int AllLossless = 0; //Lossless is not allowed
+	pFh->encode_loopfilter(NumPlanes, &wb);
+	pFh->encode_cdef(NumPlanes, pSh->ShReadEnableCdef(), &wb);
 
 }
+

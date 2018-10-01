@@ -157,11 +157,39 @@ public:
 	int FhReadBufferRemovalTimePresentFlag() { return m_buffer_removal_time_present_flag;}
 	int FhReadBufferRemovalTime(int op_num) { return m_buffer_removal_time[op_num]; }
 	int FhReadRefOrderHint(int idx) { return m_ref_order_hint[idx]; }
+	int FhReadAllowIntrabc() { return m_allow_intrabc; }
+	int FhParserFrameRefsShortSignaling() { return m_frame_refs_short_signaling; }
 
+	int FhReadLastFrameIdx() { return m_last_frame_idx; }
+	int FhReadGoldFrameIdx() { return m_gold_frame_idx; }
+	int FhReadRefFramesIdx(int ref) { return m_ref_frame_idx[ref]; }
+
+	int FhReadAllowHighPrecisionMv() { return m_allow_high_precision_mv; }
+	int FhReadIsMotionModeSwitchable() { return m_is_motion_mode_switchable; }
+	int FhReadDisableFrameEndUpdateCdf() { return m_disable_frame_end_update_cdf; }
 
 	//write uncompressed header
 	uint32_t write_uncompressed_header_obu(uint8_t *const dst, int bit_buffer_offset);
 	void write_temporal_point_info(int frame_presentation_time_length_minus_1, CBitWriter *wb);
+	void write_frame_size(int num_bits_width, int num_bits_height, int enable_superres, CBitWriter *wb);
+	void write_superres_scale(int enable_superres, CBitWriter *wb);
+	void write_render_size(CBitWriter *wb);
+	void write_frame_size_with_refs(CBitWriter *wb);
+	void write_frame_interp_filter(CBitWriter *wb);
+	void encode_quantization(int NumPlanes, int separate_uv_delta_q, CBitWriter *wb);
+	void write_delta_q(int delta_q, CBitWriter *wb);
+	void encode_segmentation(CBitWriter *wb);
+	void encode_delta_q_and_lf_params(CBitWriter *wb);
+	void encode_loopfilter(int NumPlanes, CBitWriter *wb);
+	void encode_cdef(int NumPlanes, int enable_cdef, CBitWriter *wb);
+
+	int av1_superres_scaled() {
+		// Note: for some corner cases (e.g. cm->width of 1), there may be no scaling
+		// required even though cm->superres_scale_denominator != SCALE_NUMERATOR.
+		// So, the following check is more accurate.
+		return !(m_UpscaledWidth == m_FrameWidth);
+	}
+
 private:
 	int m_idLen;
 
@@ -274,9 +302,9 @@ private:
 	int m_loop_filter_sharpness;
 	int m_loop_filter_delta_enabled;
 	int m_loop_filter_delta_update;
-	int m_update_ref_delta;
+	int m_update_ref_delta[TOTAL_REFS_PER_FRAME];
 	int m_loop_filter_ref_deltas[TOTAL_REFS_PER_FRAME];
-	int m_update_mode_delta;
+	int m_update_mode_delta[2];
 	int m_loop_filter_mode_deltas[2];
 
 	int m_cdef_damping_minus_3;

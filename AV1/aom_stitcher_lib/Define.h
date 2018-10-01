@@ -75,8 +75,13 @@
 
 #define MAX_SEGMENTS 8
 #define TOTAL_REFS_PER_FRAME 8
+#define QINDEX_BITS 8
+#define QM_LEVEL_BITS 4
+#define CDEF_STRENGTH_BITS 6
 
 #define RESTORATION_TILESIZE_MAX 256
+
+#define REF_FRAMES_LOG2 3
 
 typedef enum ATTRIBUTE_PACKED {
 	IDENTITY = 0,      // identity transformation, 0-parameter
