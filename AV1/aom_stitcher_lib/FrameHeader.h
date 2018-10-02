@@ -86,7 +86,7 @@ public:
 		int max_frame_width_minus_1, int max_frame_height_minus_1,
 		int enable_superres, CBitReader *rb);
 
-	void FhParserForceIntegerMv(CBitReader *rb);
+	void FhParserAllowHighPrecisionMv(CBitReader *rb);
 	void FhParserInterpolationFilter(CBitReader *rb);
 
 	void FhParserIsMotionModeSwitchable(int is_motion_mode_switchable) { m_is_motion_mode_switchable = is_motion_mode_switchable; }
@@ -134,6 +134,7 @@ public:
 
 	int FhReadUpscaledWidth() { return m_UpscaledWidth; }
 	int FhReadFrameWidth() { return m_FrameWidth; }
+	int FhReadFrameHeight() { return m_FrameHeight; }
 
 	int FhReadCurrentFrameId() { return m_current_frame_id; }
 	int FhReadFrameSizeOverrideFlag() { return m_frame_size_override_flag;}
@@ -168,12 +169,15 @@ public:
 	int FhReadIsMotionModeSwitchable() { return m_is_motion_mode_switchable; }
 	int FhReadDisableFrameEndUpdateCdf() { return m_disable_frame_end_update_cdf; }
 	int FhReadReferenceSelect() { return m_reference_select; }
-	
+	int FhReadAllowWarpedMotion() { return m_allow_warped_motion; }
+	int FhReadReducedTxSet() { return m_reduced_tx_set; }
+
 
 	//write uncompressed header
 	uint32_t write_uncompressed_header_obu(uint8_t *const dst, int bit_buffer_offset);
 	void write_temporal_point_info(int frame_presentation_time_length_minus_1, CBitWriter *wb);
-	void write_frame_size(int num_bits_width, int num_bits_height, int enable_superres, CBitWriter *wb);
+	void write_frame_size(int num_bits_width, int num_bits_height, int enable_superres, 
+		int sh_frame_width, int sh_frame_height, CBitWriter *wb);
 	void write_superres_scale(int enable_superres, CBitWriter *wb);
 	void write_render_size(CBitWriter *wb);
 	void write_frame_size_with_refs(CBitWriter *wb);
@@ -187,6 +191,12 @@ public:
 	void encode_restoration_mode(int NumPlanes, int enable_restoration, int use_128x128_superblock,
 		int subsampling_x, int subsampling_y, CBitWriter *wb);
 	void write_tx_mode(CBitWriter *wb);
+	void write_skip_mode_params(int FrameIsIntra, int enable_order_hint, CBitWriter *wb);
+	void write_global_motion_params(int FrameIsIntra, CBitWriter *wb);
+	void write_film_grain_params(int film_grain_params_present,
+		int show_frame, int showable_frame, CBitWriter *wb);
+
+	void write_tile_info(int use_128x128_superblock, FrameSize_t *tile_sizes, CBitWriter *wb);
 
 	int av1_superres_scaled() {
 		// Note: for some corner cases (e.g. cm->width of 1), there may be no scaling
@@ -195,6 +205,10 @@ public:
 		return !(m_UpscaledWidth == m_FrameWidth);
 	}
 
+
+	int m_ParserIdx;
+	uint32_t m_uiNumTileRows;
+	uint32_t m_uiNumTileCols;
 private:
 	int m_idLen;
 
@@ -350,10 +364,10 @@ private:
 	int m_reduced_tx_set;
 
 	//global_motion_params( )
-	int m_is_global;
+	int m_is_global[NUM_REF_FRAMES];
 	int m_is_rot_zoom;
 	int m_is_translation;
-	TransformationType m_GmType[INTER_REFS_PER_FRAME];
+	TransformationType m_GmType[NUM_REF_FRAMES];
 
 	int m_RefValid[NUM_REF_FRAMES];
 	int	m_RefOrderHint[NUM_REF_FRAMES];
@@ -404,4 +418,5 @@ private:
 
 	//tile_group_obu(sz)
 	int m_tile_start_and_end_present_flag;
+
 };

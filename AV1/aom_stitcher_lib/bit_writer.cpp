@@ -90,3 +90,18 @@ void CBitWriter::add_trailing_bits() {
 		aom_wb_write_bit(1);
 	}
 }
+
+
+// Same function as write_uniform but writing to uncompresses header wb
+void CBitWriter::wb_write_uniform(int n, int v) {
+	const int l = get_unsigned_bits(n);
+	const int m = (1 << l) - n;
+	if (l == 0) return;
+	if (v < m) {
+		aom_wb_write_literal(v, l - 1);
+	}
+	else {
+		aom_wb_write_literal(m + ((v - m) >> 1), l - 1);
+		aom_wb_write_literal((v - m) & 1, 1);
+	}
+}

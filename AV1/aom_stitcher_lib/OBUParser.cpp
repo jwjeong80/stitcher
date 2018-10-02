@@ -309,7 +309,6 @@ bool COBUParser::DecodeOneOBUC(uint8_t *pBitStream, uint32_t uiBitstreamSize, bo
 			return -1;
 		}
 
-
 		CBitReader rb(data, data + payload_size, 0);
 
 		m_ObuHeader[m_NumObu] = obu_header;
@@ -398,9 +397,7 @@ bool COBUParser::DecodeOneOBUC(uint8_t *pBitStream, uint32_t uiBitstreamSize, bo
 			one_tile_size = payload_size - frame_header_size - tile_group_header_size;
 			remain_sz -= one_tile_size;
 			data += one_tile_size;
-			if (remain_sz > 0)
-				printf("");
-			
+						
 			//get_tile_buffer;
 			m_ObuInfo[m_NumObu].m_TileHeaderSize = tile_group_header_size;
 			m_ObuInfo[m_NumObu].m_TileDataSize = one_tile_size;
@@ -545,10 +542,13 @@ uint32_t COBUParser::ReadSequenceHeaderObu(CBitReader *rb)
 
 uint32_t COBUParser::ReadFrameHeaderObu(CBitReader *rb, const uint8_t *data, int trailing_bits_present)
 {
-
 	const uint32_t saved_bit_offset = rb->AomRbReadBitOffset();
 	CSequenceHeader *pSh = &m_ShBuffer;
 	CFrameHeader *pFh = &m_FhBuffer;
+
+	pFh->m_ParserIdx = m_ParserIdx;
+	pFh->m_uiNumTileRows = m_uiNumTileRows;
+	pFh->m_uiNumTileCols = m_uiNumTileCols;
 
 	int idLen = 0;
 	int FrameIsIntra = 1;
@@ -803,7 +803,7 @@ uint32_t COBUParser::ReadFrameHeaderObu(CBitReader *rb, const uint8_t *data, int
 				pFh->FhRenderSize(rb);
 			}
 
-			pFh->FhParserForceIntegerMv(rb);
+			pFh->FhParserAllowHighPrecisionMv(rb);
 			pFh->FhParserInterpolationFilter(rb);
 			pFh->FhParserIsMotionModeSwitchable(rb->AomRbReadBit());
 
@@ -928,10 +928,11 @@ int32_t COBUParser::ReadTileGroupHeader(CBitReader *rb, int *start_tile, int *en
 }
 
 
-void COBUParser::RewriteFrameHeaderObu(uint8_t *const dst, int bit_buffer_offset) {
+uint32_t COBUParser::RewriteFrameHeaderObu(uint8_t *const dst, int bit_buffer_offset, FrameSize_t *tile_sizes) {
 	CFrameHeader *pFh = &m_FhBuffer;
 	CSequenceHeader *pSh = &m_ShBuffer;
 	CBitWriter wb(dst, bit_buffer_offset);
+	pFh->m_ParserIdx = m_ParserIdx;
 
 	//Sequence Header
 	int reduced_still_picture_header = pSh->ShReadReducedStillPictureHdr();
@@ -980,7 +981,7 @@ void COBUParser::RewriteFrameHeaderObu(uint8_t *const dst, int bit_buffer_offset
 			if (frame_id_numbers_present_flag) {
 				wb.aom_wb_write_literal(pFh->FhReadDisplayFrameId(), idLen);
 			}
-			return;
+			return -1;
 		}
 
 		wb.aom_wb_write_literal(frame_type, 2);
@@ -1020,7 +1021,8 @@ void COBUParser::RewriteFrameHeaderObu(uint8_t *const dst, int bit_buffer_offset
 		}
 	}
 	else {
-		assert(force_integer_mv == 0);
+		if(!FrameIsIntra)
+			assert(force_integer_mv == 0);
 	}
 
 	if (frame_id_numbers_present_flag) {
@@ -1031,7 +1033,8 @@ void COBUParser::RewriteFrameHeaderObu(uint8_t *const dst, int bit_buffer_offset
 		wb.aom_wb_write_bit(frame_size_override_flag);
 	}
 
-	wb.aom_wb_write_literal(order_hint, OrderHintBits);
+	if (enable_order_hint)
+	    wb.aom_wb_write_literal(order_hint, OrderHintBits);
 	
 	if (!error_resilient_mode && !FrameIsIntra) {
 		wb.aom_wb_write_literal(primary_ref_frame, PRIMARY_REF_BITS);
@@ -1129,8 +1132,12 @@ void COBUParser::RewriteFrameHeaderObu(uint8_t *const dst, int bit_buffer_offset
 	}
 
 	int allow_intrabc = pFh->FhReadAllowIntrabc();
+	int sh_frame_width = pSh->ShReadFrameWidth();
+	int sh_frame_height = pSh->ShReadFrameHeight();
+
 	if (frame_type == KEY_FRAME) {
-		pFh->write_frame_size(frame_width_bits_minus_1, frame_height_bits_minus_1, enable_superres, &wb);
+		pFh->write_frame_size(frame_width_bits_minus_1, frame_height_bits_minus_1, enable_superres,
+			sh_frame_width, sh_frame_height, &wb);
 		assert(!pFh->av1_superres_scaled() || !allow_intrabc);
 		if (allow_screen_content_tools && !pFh->av1_superres_scaled()) {
 			wb.aom_wb_write_bit(allow_intrabc);
@@ -1138,7 +1145,8 @@ void COBUParser::RewriteFrameHeaderObu(uint8_t *const dst, int bit_buffer_offset
 	}
 	else {
 		if (frame_type == INTRA_ONLY_FRAME) {
-			pFh->write_frame_size(frame_width_bits_minus_1, frame_height_bits_minus_1, enable_superres, &wb);
+			pFh->write_frame_size(frame_width_bits_minus_1, frame_height_bits_minus_1, enable_superres,
+				sh_frame_width, sh_frame_height, &wb);
 			assert(!pFh->av1_superres_scaled() || !allow_intrabc);
 			if (allow_screen_content_tools && !pFh->av1_superres_scaled()) {
 				wb.aom_wb_write_bit(allow_intrabc);
@@ -1169,7 +1177,8 @@ void COBUParser::RewriteFrameHeaderObu(uint8_t *const dst, int bit_buffer_offset
 				pFh->write_frame_size_with_refs(&wb); //unimplemented
 			}
 			else {
-				pFh->write_frame_size(frame_width_bits_minus_1, frame_height_bits_minus_1, enable_superres, &wb);
+				pFh->write_frame_size(frame_width_bits_minus_1, frame_height_bits_minus_1, enable_superres,
+					sh_frame_width, sh_frame_height, &wb);
 			}
 
 			if (!force_integer_mv) {
@@ -1194,8 +1203,11 @@ void COBUParser::RewriteFrameHeaderObu(uint8_t *const dst, int bit_buffer_offset
 		wb.aom_wb_write_bit(pFh->FhReadDisableFrameEndUpdateCdf());
 	}
 
-	//write_tile_info()
+	int use_128x128_superblock = pSh->ShReadUse128x128Superblock();
 	int NumPlanes = pSh->ShReadNumPlanes();
+
+	pFh->write_tile_info(use_128x128_superblock, tile_sizes, &wb);
+
 	int separate_uv_delta_q = pSh->ShReadSeparateUvDeltaQ();
 	pFh->encode_quantization(NumPlanes, separate_uv_delta_q, &wb);
 	pFh->encode_segmentation(&wb);
@@ -1205,12 +1217,28 @@ void COBUParser::RewriteFrameHeaderObu(uint8_t *const dst, int bit_buffer_offset
 
 	pFh->encode_loopfilter(NumPlanes, &wb);
 	pFh->encode_cdef(NumPlanes, pSh->ShReadEnableCdef(), &wb);
-	pFh->encode_restoration_mode(NumPlanes, pSh->ShReadEnableRestoration(), pSh->ShReadUse128x128Superblock(),
+	pFh->encode_restoration_mode(NumPlanes, pSh->ShReadEnableRestoration(), use_128x128_superblock,
 		pSh->ShReadSubsamplingX(), pSh->ShReadSubsamplingY(), &wb);
 	pFh->write_tx_mode(&wb);
 
 	if (!FrameIsIntra) {
-		wb.aom_wb_write_bit(pFh->FhReadReferenceSelect());
+		wb.aom_wb_write_bit(pFh->FhReadReferenceSelect()); //frame_reference_mode( )
 	}
+	pFh->write_skip_mode_params(FrameIsIntra, enable_order_hint, &wb);
+
+	assert(pSh->ShReadEnableWarpedMotion() == 0);
+	if (!FrameIsIntra && !error_resilient_mode && !pSh->ShReadEnableWarpedMotion()) {
+		wb.aom_wb_write_bit(pFh->FhReadAllowWarpedMotion()); //This flag is not coded
+ 	}
+
+	wb.aom_wb_write_bit(pFh->FhReadReducedTxSet());
+	pFh->write_global_motion_params(FrameIsIntra, &wb);
+	pFh->write_film_grain_params(pSh->ShReadFilmGrainParamsPresent(),
+		show_frame, pFh->FhReadShowableFrame(), &wb);
+	
+	//if (append_trailing_bits) 
+	//	add_trailing_bits(&wb);
+
+	return wb.aom_wb_bytes_written();
 }
 

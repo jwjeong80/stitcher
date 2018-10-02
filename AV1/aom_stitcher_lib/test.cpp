@@ -99,6 +99,24 @@ int _tmain(int argc, _TCHAR* argv[])
 	argv[12] = L"..\\Bin\\input_3x3_7.obu";
 	argv[13] = L"..\\Bin\\input_3x3_8.obu";
 	argc = 13 + 1;
+
+	argv[1] = L"..\\Bin\\outstream_2.obu";
+	argv[2] = L"3";             //numTileRows
+	argv[3] = L"4";             //numTileCols
+	argv[4] = L"0";              //annexB flag
+	argv[5] = L"..\\Bin\\00_Beauty_3840x2160_60_4x3_0.obu";
+	argv[6] = L"..\\Bin\\00_Beauty_3840x2160_60_4x3_1.obu";
+	argv[7] = L"..\\Bin\\00_Beauty_3840x2160_60_4x3_2.obu";
+	argv[8] = L"..\\Bin\\00_Beauty_3840x2160_60_4x3_3.obu";
+	argv[9] = L"..\\Bin\\00_Beauty_3840x2160_60_4x3_4.obu";
+	argv[10] = L"..\\Bin\\00_Beauty_3840x2160_60_4x3_5.obu";
+	argv[11] = L"..\\Bin\\00_Beauty_3840x2160_60_4x3_6.obu";
+	argv[12] = L"..\\Bin\\00_Beauty_3840x2160_60_4x3_7.obu";
+	argv[13] = L"..\\Bin\\00_Beauty_3840x2160_60_4x3_8.obu";
+	argv[14] = L"..\\Bin\\00_Beauty_3840x2160_60_4x3_9.obu";
+	argv[15] = L"..\\Bin\\00_Beauty_3840x2160_60_4x3_10.obu";
+	argv[16] = L"..\\Bin\\00_Beauty_3840x2160_60_4x3_11.obu";
+	argc = 16 + 1;
 #
 	char *cFileNames[MAX_STREAMS + 1];
 

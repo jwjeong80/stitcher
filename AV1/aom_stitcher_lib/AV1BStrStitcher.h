@@ -33,13 +33,15 @@ public:
 
 	uint32_t	m_uiNumParsers;
 	OBU	m_OBU;
-
+	
 private:
 	COBUParser * m_pOBUParser[MAX_STREAMS];
 	COBUWriter  m_OBUWriter;
 
 	uint32_t    *m_uiWidths;
 	uint32_t    *m_uiHeights;
+
+	FrameSize_t m_tileSizes[MAX_STREAMS];
 
 protected:
 

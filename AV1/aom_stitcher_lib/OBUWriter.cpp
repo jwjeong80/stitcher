@@ -113,3 +113,19 @@ int COBUWriter::write_uleb_obu_size(uint32_t obu_header_size, uint32_t obu_paylo
 
 	return AOM_CODEC_OK;
 }
+
+
+uint32_t COBUWriter::write_tile_group_header(uint8_t *const dst, int bit_buffer_offset) {
+	
+	CBitWriter wb(dst, bit_buffer_offset);
+	uint32_t size = 0;
+
+	if(m_uiNumTileRows*m_uiNumTileCols == 1)
+	   return size;
+
+	//tile_start_and_end_present_flag = 0 
+	wb.aom_wb_write_bit(0);
+
+	size = wb.aom_wb_bytes_written();
+	return size;
+}

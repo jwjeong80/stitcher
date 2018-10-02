@@ -36,6 +36,20 @@ public:
 	size_t obu_memmove(uint32_t obu_header_size, uint32_t obu_payload_size, uint8_t *data, int bit_buffer_offset);
 	int write_uleb_obu_size(uint32_t obu_header_size, uint32_t obu_payload_size, uint8_t *dest);
 
+	uint32_t write_tile_group_header(uint8_t *const dst, int bit_buffer_offset);
+
+
+
+	void mem_put_le32(void *vmem, int val) {
+		unsigned char *mem = (unsigned char *)vmem;
+
+		mem[0] = (unsigned char)((val >> 0) & 0xff);
+		mem[1] = (unsigned char)((val >> 8) & 0xff);
+		mem[2] = (unsigned char)((val >> 16) & 0xff);
+		mem[3] = (unsigned char)((val >> 24) & 0xff);
+	}
+
+
 private:
 	bool                m_bAnnexB;
 	uint32_t            m_uiNumTileRows;

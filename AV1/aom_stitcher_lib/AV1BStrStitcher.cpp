@@ -41,10 +41,11 @@ int CAV1BStrStitcher::Create(uint32_t uiNumTileRows, uint32_t uiNumTileCols, boo
 	{
 		m_pOBUParser[i] = new COBUParser;
 		m_pOBUParser[i]->Create(uiNumTileRows, uiNumTileCols);
-
 	}
 	m_OBUWriter.Create(uiNumTileRows, uiNumTileCols, bAnnexB);
 
+
+	//m_tileSizes = new FrameSize[m_uiNumParsers];
 	m_uiWidths = new uint32_t[m_uiNumParsers];
 	m_uiHeights = new uint32_t[m_uiNumParsers];
 	return 1;
@@ -60,6 +61,8 @@ void CAV1BStrStitcher::Destroy()
 			SAFE_DELETES(m_pOBUParser[i]);
 		}
 	}
+
+	//SAFE_DELETES(m_tileSizes);
 
 	SAFE_DELETES(m_uiWidths);
 	SAFE_DELETES(m_uiHeights);
@@ -91,6 +94,9 @@ int CAV1BStrStitcher::StitchSingleOBU(const OBU *pInpOBUs, uint32_t uiAnnexBFlag
 
 		bRwSeqHdrsFlag = m_pOBUParser[i]->getSeqHeader(1) != NULL;
 
+		m_tileSizes[i].frame_width = m_pOBUParser[i]->getFhFrameWidth();
+		m_tileSizes[i].frame_height = m_pOBUParser[i]->getFhFrameHeight();
+
 		//if (bRwSeqHdrsFlag && i > 1) {
 		//	if (m_pOBUParser[0]->getSeqHeaderSize() == m_pOBUParser[i]->getSeqHeaderSize()) {
 		//		int same = memcmp(m_pOBUParser[0]->getSeqHeader(), m_pOBUParser[i]->getSeqHeader(), m_pOBUParser[i]->getSeqHeaderSize());
@@ -106,29 +112,26 @@ int CAV1BStrStitcher::StitchSingleOBU(const OBU *pInpOBUs, uint32_t uiAnnexBFlag
 
 		//}
 		//// load pointers of header information from HevcParser
+		assert(m_pOBUParser[i]->getNumberObu() == 3);
+
 		int j = bRwSeqHdrsFlag ? 2 : 1;
 		for(; j < m_pOBUParser[i]->getNumberObu(); j++)
 			m_OBUWriter.SetTileData(m_pOBUParser[i]->getTlieHeader(0), m_pOBUParser[i]->getTlieData(0), i, j);
 		//m_HevcWriter.SetSlice(m_pHevcParser[i]->GetSliceHeader(), m_pHevcParser[i]->GetSliceSegData(), i);
 		
 	}
-	//get size of entire frame
-	//m_pOBUParser[i]->
-	m_pOBUParser[m_uiNumParsers]->SequenceHeaderCopy(&m_pOBUParser[0]->getSeqHeaderBuffer());
-	
-	//m_pOBUParser[m_uiNumParsers] = m_pOBUParser[0];
 
-	printf("");
 	int bit_offset = 0;
 	int written_byte = 0;
 	//m_OBUWriter.WriteTemporalDelimiter();
 	//bit_offset = 16; //temporal delimiter: 2byte * 8 = 16bit
 	//write_byte = 2;
 	if (bRwSeqHdrsFlag) {
+		m_pOBUParser[m_uiNumParsers]->SequenceHeaderCopy(&m_pOBUParser[0]->getSeqHeaderBuffer());
 		//write sequence header obu
 		uint32_t obu_header_size = m_OBUWriter.write_obu_header(int(OBU_SEQUENCE_HEADER), 0 /*obu_extension*/, m_OBUWriter.getOBUOutBuf(), bit_offset);
-		written_byte = obu_header_size;
-		bit_offset = obu_header_size << 3;
+		written_byte += obu_header_size;
+		bit_offset += obu_header_size << 3;
 
 		written_byte = m_pOBUParser[m_uiNumParsers]->RewriteSequenceHeaderObu(m_OBUWriter.getOBUOutBuf(), bit_offset);
 		uint32_t obu_payload_size = written_byte - obu_header_size;
@@ -140,6 +143,48 @@ int CAV1BStrStitcher::StitchSingleOBU(const OBU *pInpOBUs, uint32_t uiAnnexBFlag
 		written_byte += length_field_size;
 		bit_offset = written_byte << 3;
 		//m_OBUWriter.SetOBUOutBuf(m_pOBUParser[0]->getSeqHeader(1), m_pOBUParser[0]->getSeqHeaderSize(1));
+	}
+
+	//OBU FRAME HEADER
+	{
+		m_pOBUParser[m_uiNumParsers]->FrameHeaderCopy(&m_pOBUParser[0]->getFrameHeaderBuffer());
+		//write sequence header obu
+		written_byte = m_OBUWriter.write_obu_header(int(OBU_FRAME), 0 /*obu_extension*/, m_OBUWriter.getOBUOutBuf(), bit_offset);
+		//written_byte += obu_header_size;
+		bit_offset = written_byte << 3;
+
+		written_byte = m_pOBUParser[m_uiNumParsers]->RewriteFrameHeaderObu(m_OBUWriter.getOBUOutBuf(), bit_offset, m_tileSizes);
+		bit_offset = written_byte << 3;
+
+		written_byte = m_OBUWriter.write_tile_group_header(m_OBUWriter.getOBUOutBuf(), bit_offset);
+		bit_offset = written_byte << 3;
+		//search remux tile
+		//    tsb = choose_size_bytes(max_tile_size, 0);
+		//tcsb = 4;  // This is ignored
+
+		int obu_num = bRwSeqHdrsFlag ? 2 : 1;
+		for (int i = 0; i < m_uiNumParsers; i++)
+		{
+			int TileSizeBytes = 4; //fixed in this code
+
+			if(i < m_uiNumParsers - 1){
+				uint32_t tileSize = m_pOBUParser[i]->getTileSize(obu_num);
+				m_OBUWriter.mem_put_le32(m_OBUWriter.getOBUOutBuf(), tileSize);
+
+				//write tile size
+				//if (m_OBUWriter.write_uleb_obu_size(tg_hdr_size, tileSize, dst) !=
+				//	AOM_CODEC_OK) {
+				//	assert(0);
+				//}
+				//write_tiles_ize
+				m_OBUWriter.SetOBUOutBuf(m_pOBUParser[i]->getFrameObu(obu_num), tileSize);
+				printf("");
+			}
+
+		}
+
+		//length_field
+
 	}
 
 	int j = bRwSeqHdrsFlag ? 2 : 1;

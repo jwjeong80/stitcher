@@ -141,3 +141,8 @@ typedef struct BitstreamLevel {
 	uint8_t major;
 	uint8_t minor;
 } BitstreamLevel;
+
+typedef struct FrameSize {
+	int frame_width;
+	int frame_height;
+}FrameSize_t;

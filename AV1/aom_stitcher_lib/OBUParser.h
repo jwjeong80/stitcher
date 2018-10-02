@@ -179,6 +179,10 @@ public:
 		memcpy(&m_ShBuffer, SourceSh, sizeof(CSequenceHeader));
 	}
 
+	void FrameHeaderCopy(CFrameHeader *SourceFh) {
+		memcpy(&m_FhBuffer, SourceFh, sizeof(CFrameHeader));
+	}
+
 	COBUParser& operator=(const COBUParser& rhs) {
 		memcpy(&this->m_ShBuffer, &rhs.m_ShBuffer, sizeof(CSequenceHeader));
 		return *this;
@@ -217,7 +221,7 @@ public:
 		 CSequenceHeader *pSh = &m_ShBuffer;
 		 return pSh->write_sequence_header_obu(dst, bit_buffer_offset);
 	 }
-	 void RewriteFrameHeaderObu(uint8_t *const dst, int bit_buffer_offset); 
+	 uint32_t RewriteFrameHeaderObu(uint8_t *const dst, int bit_buffer_offset, FrameSize_t *tile_sizes);
 
 	 
 	 const uint8_t *getSeqHeader(int idx) { return m_ObuInfo[idx].m_pSeqHdrOBuStartAddr; }
@@ -228,12 +232,17 @@ public:
 	 const uint8_t *getTlieData(int idx) { return m_ObuInfo[idx].m_pTileDataStartAddr; }
 
 	 int getFrameObuSize(int idx) { return m_ObuInfo[idx].m_FrameObuSize; }
+	 int getTileSize(int idx) { return m_ObuInfo[idx].m_TileDataSize; }
 	 int getNumberObu() { return m_NumObu; }
 
-	 int getFrameWidth() { return m_ShBuffer.ShReadFrameWidth(); }
-	 int getFrameHeight() { return m_ShBuffer.ShReadFrameHeight(); }
-
+	 int getShFrameWidth() { return m_ShBuffer.ShReadFrameWidth(); }
+	 int getShFrameHeight() { return m_ShBuffer.ShReadFrameHeight(); }
+	 
+	 int getFhFrameWidth() { return m_FhBuffer.FhReadFrameWidth(); }
+	 int getFhFrameHeight() { return m_FhBuffer.FhReadFrameHeight(); }
+	 
 	 CSequenceHeader getSeqHeaderBuffer() { return m_ShBuffer; }
+	 CFrameHeader getFrameHeaderBuffer() { return m_FhBuffer; }
 
 private:
 	CSequenceHeader      m_ShBuffer;

@@ -125,7 +125,7 @@ void CFrameHeader::FhParserFrameSizeWithRefs(int frame_width_bits_minus_1, int f
 	}
 }
 
-void CFrameHeader::FhParserForceIntegerMv(CBitReader *rb) {
+void CFrameHeader::FhParserAllowHighPrecisionMv(CBitReader *rb) {
 	if (m_force_integer_mv) {
 		m_allow_high_precision_mv = 0;
 	}
@@ -322,7 +322,7 @@ void CFrameHeader::FhParserDeltaQParams(CBitReader *rb) {
 		m_delta_q_present = rb->AomRbReadBit();
 	}
 	if (m_delta_q_present) {
-		m_delta_q_res = AomRbReadInvSignedLiteral(2);
+		m_delta_q_res = rb->AomRbReadLiteral(2);
 	}
 }
 
@@ -543,7 +543,7 @@ void CFrameHeader::FhParserGlobalMotionParams(int FrameIsIntra, CBitReader *rb) 
 		return;
 
 	for (int ref = LAST_FRAME; ref <= ALTREF_FRAME; ref++) {
-		m_is_global = rb->AomRbReadBit();
+		m_is_global[ref] = rb->AomRbReadBit();
 		TransformationType type;
 		if (m_is_global) {
 			m_is_rot_zoom = rb->AomRbReadBit();
@@ -596,14 +596,22 @@ void  CFrameHeader::write_temporal_point_info(int frame_presentation_time_length
 	wb->aom_wb_write_unsigned_literal(m_frame_presentation_time, n);
 }
 
-void CFrameHeader::write_frame_size(int num_bits_width, int num_bits_height, int enable_superres, CBitWriter *wb) {
+void CFrameHeader::write_frame_size(int num_bits_width, int num_bits_height, int enable_superres, 
+	int sh_frame_width, int sh_frame_height, CBitWriter *wb) {
 	
 	if (m_frame_size_override_flag) {
 		wb->aom_wb_write_literal(m_frame_width_minus_1, num_bits_width + 1);
 		wb->aom_wb_write_literal(m_frame_height_minus_1, num_bits_height + 1);
 	}
+	else {
+		//from sequence header 
+		m_FrameWidth = sh_frame_width;
+		m_FrameHeight = sh_frame_height;
+
+	}
 
 	write_superres_scale(enable_superres, wb);
+	FhComputeImageSize();
 	write_render_size(wb);
 }
 
@@ -802,7 +810,7 @@ void CFrameHeader::encode_loopfilter(int NumPlanes, CBitWriter *wb) {
 
 void CFrameHeader::encode_cdef(int NumPlanes, int enable_cdef, CBitWriter *wb) {
 	assert(!m_CodedLossless);
-	if (enable_cdef) 
+	if (!enable_cdef) 
 		return;
 	if (m_allow_intrabc) 
 		return;
@@ -866,4 +874,136 @@ void CFrameHeader::encode_restoration_mode(int NumPlanes, int enable_restoration
 		return;
 	}
 	wb->aom_wb_write_bit(m_TxMode == TX_MODE_SELECT);
+}
+
+ void CFrameHeader::write_skip_mode_params(int FrameIsIntra,int enable_order_hint, CBitWriter *wb) {
+	 int skipModeAllowed = 0;
+	 //enable_order_hint has to be zero currently. 
+	 if (FrameIsIntra || !m_reference_select || !enable_order_hint) { 
+		 skipModeAllowed = 0;
+	 }
+	 else {
+		 //not implemented
+	 }
+
+	 if (skipModeAllowed) {
+		 wb->aom_wb_write_bit(m_skip_mode_present);
+	 }
+ }
+
+void CFrameHeader::write_global_motion_params(int FrameIsIntra, CBitWriter *wb) {
+	 int frame;
+	 for (frame = LAST_FRAME; frame <= ALTREF_FRAME; ++frame) {
+		 wb->aom_wb_write_bit(m_is_global[frame]);
+
+		 //global motion is not aloo
+		 assert(m_GmType[frame] == IDENTITY);	
+	 }
+ }
+
+void CFrameHeader::write_film_grain_params(int film_grain_params_present,
+	int show_frame, int showable_frame, CBitWriter *wb) {
+	if (!film_grain_params_present || (!show_frame && !showable_frame)) {
+		//film_grain_params_present is not allowed
+		return;
+	}
+}
+
+
+void CFrameHeader::write_tile_info(int use_128x128_superblock, FrameSize_t *tile_sizes, CBitWriter *wb) {
+	//tile size 
+	m_sbCols = use_128x128_superblock ? ((m_MiCols + 31) >> 5) : ((m_MiCols + 15) >> 4);
+	m_sbRows = use_128x128_superblock ? ((m_MiRows + 31) >> 5) : ((m_MiRows + 15) >> 4);
+	m_sbShift = use_128x128_superblock ? 5 : 4;
+	m_sbSize = m_sbShift + 2;
+	m_maxTileWidthSb = MAX_TILE_WIDTH >> m_sbSize;
+	m_maxTileAreaSb = MAX_TILE_AREA >> (2 * m_sbSize);
+	m_minLog2TileCols = tile_log2(m_maxTileWidthSb, m_sbCols);
+	m_maxLog2TileCols = tile_log2(1, AOMMIN(m_sbCols, MAX_TILE_COLS));
+	m_maxLog2TileRows = tile_log2(1, AOMMIN(m_sbRows, MAX_TILE_ROWS));
+	m_minLog2Tiles = AOMMAX(m_minLog2TileCols, tile_log2(m_maxTileAreaSb, m_sbRows * m_sbCols));
+
+	m_uniform_tile_spacing_flag = 0; //This flag has to be re-considered
+	wb->aom_wb_write_bit(m_uniform_tile_spacing_flag);
+
+	if (m_uniform_tile_spacing_flag) {
+		//tile columns
+		int ones = m_TileColsLog2 - m_minLog2TileCols;
+		while (ones--) {
+			wb->aom_wb_write_bit(1);
+		}
+		if (m_TileColsLog2 < m_maxLog2TileCols) {
+			wb->aom_wb_write_bit(0);
+		}
+		
+		//tile rows
+		ones = m_TileRowsLog2 - m_TileRowsLog2;
+		while (ones--) {
+			wb->aom_wb_write_bit(1);
+		}
+		if (m_TileRowsLog2 < m_maxLog2TileRows) {
+			wb->aom_wb_write_bit(0);
+		}
+
+		m_tileWidthSb = (m_sbCols + (1 << m_TileColsLog2) - 1) >> m_TileColsLog2;
+
+		int i = 0;
+		for (int startSb = 0; startSb < m_sbCols; startSb += m_tileWidthSb) {
+			m_MiColStarts[i] = startSb << m_sbShift;
+			i += 1;
+		}
+		m_MiColStarts[i] = m_MiCols;
+		m_TileCols = i;
+
+		m_minLog2TileRows = AOMMAX(m_minLog2Tiles - m_TileColsLog2, 0);
+		m_TileRowsLog2 = m_minLog2TileRows;
+
+		m_tileHeightSb = (m_sbRows + (1 << m_TileRowsLog2) - 1) >> m_TileRowsLog2;
+		i = 0;
+		for (int startSb = 0; startSb < m_sbRows; startSb += m_tileHeightSb) {
+			m_MiRowStarts[i] = startSb << m_sbShift;
+			i += 1;
+		}
+		m_MiRowStarts[i] = m_MiRows;
+		m_TileRows = i;
+	}
+	else {
+		int sb_offset = (1 << m_sbSize) - 1;
+		int width_sb = m_sbCols;
+		int startSb = 0, i;
+		for (i = 0; i < m_uiNumTileCols; i++) {
+			int size_sb = (tile_sizes[i].frame_width + sb_offset)>> m_sbSize;
+
+			wb->wb_write_uniform(AOMMIN(width_sb, m_maxTileWidthSb), size_sb - 1);
+			width_sb -= size_sb;
+		}
+		assert(width_sb == 0);
+
+		// rows
+		int height_sb = m_sbRows;
+		for (i = 0; i < m_uiNumTileRows; i++) {
+			int size_sb = (tile_sizes[i*m_uiNumTileCols].frame_height + sb_offset) >> m_sbSize;
+			wb->wb_write_uniform(AOMMIN(height_sb, m_maxTileHeightSb), size_sb - 1);
+			height_sb -= size_sb;
+		}
+		assert(height_sb == 0);
+	}
+
+	//m_TileColsLog2 = m_uiNumTileCols;
+	//m_TileRowsLog2 = m_uiNumTileRows;
+
+	//if (m_uiNumTileCols * m_uiNumTileRows > 1) 
+	if(m_TileColsLog2 > 1 || m_TileRowsLog2 > 1)
+	{
+		wb->aom_wb_write_literal(0, m_TileColsLog2 + m_TileRowsLog2);
+		// Number of bytes in tile size - 1
+		wb->aom_wb_write_literal(3, 2); //m_tile_size_bytes_minus_1 = 3
+		m_TileSizeBytes = 4; //m_tile_size_bytes_minus_1+1
+		//m_context_update_tile_id = rb->AomRbReadLiteral(m_TileRowsLog2 + m_TileColsLog2);
+		//m_tile_size_bytes_minus_1 = rb->AomRbReadLiteral(2);
+		//m_TileSizeBytes = m_tile_size_bytes_minus_1 + 1;
+	}
+	else {
+		m_context_update_tile_id = 0;
+	}
 }
