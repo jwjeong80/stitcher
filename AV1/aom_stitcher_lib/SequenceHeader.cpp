@@ -294,6 +294,8 @@ void CSequenceHeader::ShParserColorConfig(CBitReader *rb) {
 uint32_t CSequenceHeader::write_sequence_header_obu(uint8_t *const dst, int bit_buffer_offset) {
 	CBitWriter wb(dst, bit_buffer_offset);
 	uint32_t size = 0;
+	uint32_t before_size = bit_buffer_offset >> 3;
+	assert(bit_buffer_offset % 8 == 0);
 
 	write_profile(m_seq_profile, &wb);
 
@@ -355,7 +357,7 @@ uint32_t CSequenceHeader::write_sequence_header_obu(uint8_t *const dst, int bit_
 	wb.add_trailing_bits();
 
 	size = wb.aom_wb_bytes_written();
-	return size;
+	return size - before_size;
 }
 
 void CSequenceHeader::write_profile(BITSTREAM_PROFILE profile, CBitWriter *wb) {

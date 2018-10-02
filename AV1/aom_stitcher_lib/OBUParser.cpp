@@ -928,10 +928,12 @@ int32_t COBUParser::ReadTileGroupHeader(CBitReader *rb, int *start_tile, int *en
 }
 
 
-uint32_t COBUParser::RewriteFrameHeaderObu(uint8_t *const dst, int bit_buffer_offset, FrameSize_t *tile_sizes) {
+uint32_t COBUParser::RewriteFrameHeaderObu(FrameSize_t *tile_sizes, uint8_t *const dst, int bit_buffer_offset) {
 	CFrameHeader *pFh = &m_FhBuffer;
 	CSequenceHeader *pSh = &m_ShBuffer;
 	CBitWriter wb(dst, bit_buffer_offset);
+	uint32_t before_size = bit_buffer_offset >> 3;
+	assert(bit_buffer_offset % 8 == 0);
 	pFh->m_ParserIdx = m_ParserIdx;
 
 	//Sequence Header
@@ -1238,7 +1240,7 @@ uint32_t COBUParser::RewriteFrameHeaderObu(uint8_t *const dst, int bit_buffer_of
 	
 	//if (append_trailing_bits) 
 	//	add_trailing_bits(&wb);
-
-	return wb.aom_wb_bytes_written();
+	uint32_t size = wb.aom_wb_bytes_written();
+	return size - before_size;
 }
 

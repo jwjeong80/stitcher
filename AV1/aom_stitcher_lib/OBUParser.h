@@ -221,7 +221,7 @@ public:
 		 CSequenceHeader *pSh = &m_ShBuffer;
 		 return pSh->write_sequence_header_obu(dst, bit_buffer_offset);
 	 }
-	 uint32_t RewriteFrameHeaderObu(uint8_t *const dst, int bit_buffer_offset, FrameSize_t *tile_sizes);
+	 uint32_t RewriteFrameHeaderObu(FrameSize_t *tile_sizes, uint8_t *const dst, int bit_buffer_offset);
 
 	 
 	 const uint8_t *getSeqHeader(int idx) { return m_ObuInfo[idx].m_pSeqHdrOBuStartAddr; }

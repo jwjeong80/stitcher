@@ -4,6 +4,8 @@ int aom_uleb_decode(const uint8_t *buffer, size_t available, uint64_t *value, si
 size_t aom_uleb_size_in_bytes(uint64_t value);
 int aom_uleb_encode(uint64_t value, size_t available, uint8_t *coded_value, size_t *coded_size);
 
+
+
 /*!\brief Algorithm return codes */
 typedef enum {
 	/*!\brief Operation completed without error */

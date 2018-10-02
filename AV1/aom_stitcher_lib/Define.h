@@ -31,6 +31,8 @@
 #define DISABLE_LINES       0
 #define STITCHER_FEATURES   1
 
+#define INI_BUF_SIZE 8192
+
 #define REF_FRAMES 8
 
 #define MAX_NUM_TEMPORAL_LAYERS 8
