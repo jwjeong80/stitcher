@@ -545,7 +545,7 @@ void CFrameHeader::FhParserGlobalMotionParams(int FrameIsIntra, CBitReader *rb) 
 	for (int ref = LAST_FRAME; ref <= ALTREF_FRAME; ref++) {
 		m_is_global[ref] = rb->AomRbReadBit();
 		TransformationType type;
-		if (m_is_global) {
+		if (m_is_global[ref]) {
 			m_is_rot_zoom = rb->AomRbReadBit();
 			if (m_is_rot_zoom) {
 				type = ROTZOOM;
@@ -737,9 +737,10 @@ void CFrameHeader::encode_segmentation(CBitWriter *wb) {
 
 	wb->aom_wb_write_bit(m_segmentation_enabled);
 	assert(m_segmentation_enabled == 0);
-	printf("Segmentation is not allowed!!\n");
 	if (!m_segmentation_enabled)
 		return;
+	else
+		printf("Segmentation is not allowed!!\n");
 }
 
 void CFrameHeader::encode_delta_q_and_lf_params(CBitWriter *wb) {
