@@ -63,45 +63,45 @@ class	COBUInfo	// Private structure
 public:
 
 	COBUInfo() : 
-		m_pSeqHdrOBuStartAddr(NULL),
-		m_pFrameObuStartAddr(NULL), 
-		m_pFrameHeaderStartAddr(NULL), 
-		m_pTileHeaderStartAddr(NULL),
-		m_pTileDataStartAddr(NULL),
+		m_pSeqHdrObu(NULL),
+		m_pFrameObu(NULL),
+		m_pFrameHeader(NULL),
+		m_pTileHeader(NULL),
+		m_pTilePayload(NULL),
 		m_SeqHdrSize(-1),
 		m_SeqHdrObuHdrSize(-1),
-		m_SeqHeaderDataSize(-1),
+		m_SeqHdrPayloadSize(-1),
 		m_FrameObuSize(-1),
 		m_FrameObuHdrSize(-1),
-		m_FrameHeaderSize(-1),
-	    m_TileHeaderSize(-1),
-	    m_TileDataSize(-1) {}
+		m_FrameHdrSize(-1),
+		m_TileHdrSize(-1),
+		m_TilePayloadSize(-1) {}
 	
 	~COBUInfo();
 	
 	void initilize() {
-		m_pSeqHdrOBuStartAddr = NULL;
-		m_pFrameObuStartAddr = NULL;
-		m_pFrameHeaderStartAddr = NULL;
-		m_pTileHeaderStartAddr = NULL;
-		m_pTileDataStartAddr = NULL;
+		m_pSeqHdrObu = NULL;
+		m_pFrameObu = NULL;
+		m_pFrameHeader = NULL;
+		m_pTileHeader = NULL;
+		m_pTilePayload = NULL;
 		m_SeqHdrSize = -1;
 		m_SeqHdrObuHdrSize = -1;
-		m_SeqHeaderDataSize = -1;
+		m_SeqHdrPayloadSize = -1;
 		m_FrameObuSize = -1;
 		m_FrameObuHdrSize = -1;
-		m_FrameHeaderSize = -1;
-		m_TileHeaderSize = -1;
-		m_TileDataSize = -1;
+		m_FrameHdrSize = -1;
+		m_TileHdrSize = -1;
+		m_TilePayloadSize = -1;
 	}
 
-	ObuHeader obu_header[10];
+	ObuHeader m_obu_header;
 
-	const uint8_t* m_pSeqHdrOBuStartAddr;  //sequence header OBU start address  
-	const uint8_t* m_pFrameObuStartAddr;   //frame OBU start address
-	const uint8_t* m_pFrameHeaderStartAddr; // = m_pFrameObuStartAddr + m_FrameObuSize;
-	const uint8_t* m_pTileHeaderStartAddr;  // = m_pFrameHeaderStartAddr + m_FrameHeaderSize;
-	const uint8_t* m_pTileDataStartAddr;    // = m_pTileHeaderStartAddr + m_TileHeaderSize;
+	const uint8_t* m_pSeqHdrObu;  //sequence header OBU start address  
+	const uint8_t* m_pFrameObu;   //frame OBU start address
+	const uint8_t* m_pFrameHeader; // = m_pFrameObu + m_FrameObuSize;
+	const uint8_t* m_pTileHeader;  // = m_pFrameHeader + m_FrameHeaderSize;
+	const uint8_t* m_pTilePayload;    // = m_pTileHeaderStartAddr + m_TileHeaderSize;
 	                                             
 	
 	//Sequence Header OBU:  
@@ -110,7 +110,7 @@ public:
 	//         |m_SeqHeaderOBUSize|m_SeqHeaderDataSize|
 	int m_SeqHdrSize;      // m_SeqHdrObuHdrSize+ m_SeqHeaderDataSize
 	int m_SeqHdrObuHdrSize;        
-	int m_SeqHeaderDataSize;
+	int m_SeqHdrPayloadSize;
 
 	//Frame Header OBU:  
 	// m_pFrameObuStartAddr                 m_pTileHeaderStartAddr
@@ -119,9 +119,9 @@ public:
 	//       |m_FrameObuHdrSize | m_FrameHeaderSize | m_TileHeaderSize | m_TileDataSize |
 	int m_FrameObuSize; // m_FrameObuSize + m_FrameObuHdrSize + m_TileHeaderSize + m_TileDataSize
 	int m_FrameObuHdrSize;      
-	int m_FrameHeaderSize;   
-	int m_TileHeaderSize;   
-	int m_TileDataSize;     
+	int m_FrameHdrSize;   
+	int m_TileHdrSize;   
+	int m_TilePayloadSize;     
 
 
 
@@ -179,8 +179,8 @@ public:
 		memcpy(&m_ShBuffer, SourceSh, sizeof(CSequenceHeader));
 	}
 
-	void FrameHeaderCopy(CFrameHeader *SourceFh) {
-		memcpy(&m_FhBuffer, SourceFh, sizeof(CFrameHeader));
+	void FrameHeaderCopy(CFrameHeader *SourceFh, int idx) {
+		memcpy(&m_FhBuffer[idx], SourceFh, sizeof(CFrameHeader));
 	}
 
 	COBUParser& operator=(const COBUParser& rhs) {
@@ -214,46 +214,53 @@ public:
 	 aom_codec_err_t AomReadObuHeaderC(uint8_t *buffer, size_t buffer_length,
 		 size_t *consumed, ObuHeader *header, int is_annexb);
 
-	 uint32_t ReadFrameHeaderObu(CBitReader *rb, const uint8_t *data, int trainiling_bits_present);
-	 int32_t ReadTileGroupHeader(CBitReader *rb, int *start_tile, int *end_tile, int tile_start_implicit);
+	 uint32_t ReadFrameHeaderObu(CBitReader *rb, const uint8_t *data, int trainiling_bits_present, uint32_t num_frame_obu);
+	 int32_t ReadTileGroupHeader(CBitReader *rb, int *start_tile, int *end_tile, int tile_start_implicit, uint32_t num_frame_obu);
 
 	 uint32_t RewriteSequenceHeaderObu(uint8_t *const dst, int bit_buffer_offset) {
 		 CSequenceHeader *pSh = &m_ShBuffer;
 		 return pSh->write_sequence_header_obu(dst, bit_buffer_offset);
 	 }
-	 uint32_t RewriteFrameHeaderObu(FrameSize_t *tile_sizes, uint8_t *const dst, int bit_buffer_offset);
+	 uint32_t RewriteFrameHeaderObu(FrameSize_t *tile_sizes, uint8_t *const dst, int bit_buffer_offset, uint32_t num_frame_obu);
 
-	 
-	 const uint8_t *getSeqHeader(int idx) { return m_ObuInfo[idx].m_pSeqHdrOBuStartAddr; }
+	 //OBU Infos
+	 const uint8_t *getSeqHdr(int idx) { return m_ObuInfo[idx].m_pSeqHdrObu; }
 	 int getSeqHeaderSize(int idx) { return m_ObuInfo[idx].m_SeqHdrSize; }
 
-	 const uint8_t *getFrameObu(int idx) { return m_ObuInfo[idx].m_pFrameObuStartAddr; }
-	 const uint8_t *getTlieHeader(int idx) { return m_ObuInfo[idx].m_pTileHeaderStartAddr; }
-	 const uint8_t *getTlieData(int idx) { return m_ObuInfo[idx].m_pTileDataStartAddr; }
+	 const uint8_t *getFrameObu(int idx) { return m_ObuInfo[idx].m_pFrameObu; }
+	 const uint8_t *getTlieHeader(int idx) { return m_ObuInfo[idx].m_pTileHeader; }
+	 const uint8_t *getTlieData(int idx) { return m_ObuInfo[idx].m_pTilePayload; }
 
 	 int getFrameObuSize(int idx) { return m_ObuInfo[idx].m_FrameObuSize; }
-	 int getTileSize(int idx) { return m_ObuInfo[idx].m_TileDataSize; }
+	 int getTileSize(int idx) { return m_ObuInfo[idx].m_TilePayloadSize; }
+	 OBU_TYPE getObuType(int idx) { return m_ObuInfo[idx].m_obu_header.type; }
+
+
+
 	 int getNumberObu() { return m_NumObu; }
+	 int getNumberFrameObu() { return m_numFrameOBU; }
 
 	 int getShFrameWidth() { return m_ShBuffer.ShReadFrameWidth(); }
 	 int getShFrameHeight() { return m_ShBuffer.ShReadFrameHeight(); }
 	 
-	 int getFhFrameWidth() { return m_FhBuffer.FhReadFrameWidth(); }
-	 int getFhFrameHeight() { return m_FhBuffer.FhReadFrameHeight(); }
+	 int getFhFrameWidth(int idx) { return m_FhBuffer[idx].FhReadFrameWidth(); }
+	 int getFhFrameHeight(int idx) { return m_FhBuffer[idx].FhReadFrameHeight(); }
 	 
 	 CSequenceHeader getSeqHeaderBuffer() { return m_ShBuffer; }
-	 CFrameHeader getFrameHeaderBuffer() { return m_FhBuffer; }
+	 CFrameHeader getFrameHeaderBuffer(int idx) { return m_FhBuffer[idx]; }
 
 private:
 	CSequenceHeader      m_ShBuffer;
-	CFrameHeader         m_FhBuffer;
+	CFrameHeader         m_FhBuffer[OBUS_IN_TU];
 	//ShManager            m_ShManager;                // Parameter Set Manager
-	COBUInfo             m_ObuInfo[10];                   // storage for slice header & segment data
-	ObuHeader            m_ObuHeader[10];
+	COBUInfo             m_ObuInfo[MAX_OBUS_IN_TU];                   // storage for slice header & segment data
+	//ObuHeader            m_ObuHeader[MAX_OBUS_IN_TU];
 	int                  m_NumObu;
 	int                  m_ParserIdx;
 	uint32_t            m_uiNumTileRows;
 	uint32_t            m_uiNumTileCols;
+
+	uint32_t            m_numFrameOBU;
 	//TComInputBitstream	m_SliceSegData;             // storage for slice segment data
 
 	//Bool                m_bShowLogsFlag;

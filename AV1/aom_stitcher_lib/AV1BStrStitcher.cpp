@@ -93,10 +93,14 @@ int CAV1BStrStitcher::StitchSingleOBU(const OBU *pInpOBUs, uint32_t uiAnnexBFlag
 
 		m_pOBUParser[i]->DecodeOneOBUC(pBitstream, uiBitstreamSize, bAnnexB, i);
 
-		bRwSeqHdrsFlag = m_pOBUParser[i]->getSeqHeader(1) != NULL;
+		bRwSeqHdrsFlag = m_pOBUParser[i]->getSeqHdr(1) != NULL;
 
-		m_tileSizes[i].frame_width = m_pOBUParser[i]->getFhFrameWidth();
-		m_tileSizes[i].frame_height = m_pOBUParser[i]->getFhFrameHeight();
+		m_tileSizes[i].frame_width = m_pOBUParser[i]->getFhFrameWidth(0);
+		m_tileSizes[i].frame_height = m_pOBUParser[i]->getFhFrameHeight(0);
+
+		if (m_pOBUParser[i]->getNumberFrameObu() == 2)
+			assert((m_pOBUParser[i]->getFhFrameWidth(0) == m_pOBUParser[i]->getFhFrameWidth(1)) &&
+			(m_pOBUParser[i]->getFhFrameHeight(0) == m_pOBUParser[i]->getFhFrameHeight(1)));
 
 		//if (bRwSeqHdrsFlag && i > 1) {
 		//	if (m_pOBUParser[0]->getSeqHeaderSize() == m_pOBUParser[i]->getSeqHeaderSize()) {
@@ -113,27 +117,38 @@ int CAV1BStrStitcher::StitchSingleOBU(const OBU *pInpOBUs, uint32_t uiAnnexBFlag
 
 		//}
 		//// load pointers of header information from HevcParser
-		assert(m_pOBUParser[i]->getNumberObu() == 3);
+		//assert(m_pOBUParser[i]->getNumberObu() == 3);
+		int frame_obu_num = 0;
+		for (int obu_num = 1; obu_num < m_pOBUParser[i]->getNumberObu(); obu_num++) {
+	
+			if (m_pOBUParser[i]->getObuType(obu_num) == OBU_FRAME) {
+				m_OBUWriter.SetTileData(m_pOBUParser[i]->getTlieHeader(obu_num), m_pOBUParser[i]->getTlieData(obu_num), 
+					i /*parser_idx*/, frame_obu_num /*tile data storage idx*/);
 
-		int j = bRwSeqHdrsFlag ? 2 : 1;
-		for (; j < m_pOBUParser[i]->getNumberObu(); j++) {
-			m_OBUWriter.SetTileData(m_pOBUParser[i]->getTlieHeader(0), m_pOBUParser[i]->getTlieData(0), i, j);
-			uint32_t tile_size = m_pOBUParser[i]->getTileSize(j);
-			max_tile_size = AOMMAX(tile_size, max_tile_size);
+				uint32_t tile_size = m_pOBUParser[i]->getTileSize(obu_num);
+				max_tile_size = AOMMAX(tile_size, max_tile_size);
+				frame_obu_num++;
+			}
 		}
 
-		//m_HevcWriter.SetSlice(m_pHevcParser[i]->GetSliceHeader(), m_pHevcParser[i]->GetSliceSegData(), i);
-		
 	}
 
 	int bit_offset = 0;
 	uint32_t prev_obu_written_byte = 0;
 	uint32_t total_obu_written_byte = 0;
 	uint32_t cur_obu_written_byte = 0;
+
+	////////////////////////////////////////////////////////////////
+	////////////// Write Temporal Delimiter .
+	////////////////////////////////////////////////////////////////
 	m_OBUWriter.WriteTemporalDelimiter();
 	bit_offset = 16; //temporal delimiter: 2byte * 8 = 16bit
 	total_obu_written_byte = 2;
 	
+
+	////////////////////////////////////////////////////////////////
+	/////////////// Write Sequence Header
+	////////////////////////////////////////////////////////////////
 	prev_obu_written_byte = total_obu_written_byte;
 	if (bRwSeqHdrsFlag) {
 		m_pOBUParser[m_uiNumParsers]->SequenceHeaderCopy(&m_pOBUParser[0]->getSeqHeaderBuffer());
@@ -150,7 +165,7 @@ int CAV1BStrStitcher::StitchSingleOBU(const OBU *pInpOBUs, uint32_t uiAnnexBFlag
 		total_obu_written_byte += obu_payload_size;
 		cur_obu_written_byte += obu_payload_size;
 
-		const size_t length_field_size = m_OBUWriter.obu_memmove(obu_header_size, obu_payload_size, m_OBUWriter.getOBUOutBuf(), obu_header_offset);
+		const size_t length_field_size = m_OBUWriter.obu_memmove(obu_header_size, obu_payload_size, m_OBUWriter.getOBUOutBuf(), prev_obu_written_byte);
 		if (m_OBUWriter.write_uleb_obu_size(obu_header_offset, obu_payload_size, m_OBUWriter.getOBUOutBuf()) != AOM_CODEC_OK) {
 			return AOM_CODEC_ERROR;
 		}
@@ -164,85 +179,101 @@ int CAV1BStrStitcher::StitchSingleOBU(const OBU *pInpOBUs, uint32_t uiAnnexBFlag
 		//m_OBUWriter.SetOBUOutBuf(m_pOBUParser[0]->getSeqHeader(1), m_pOBUParser[0]->getSeqHeaderSize(1));
 	}
 
-	//OBU FRAME HEADER
-	prev_obu_written_byte = total_obu_written_byte;
-	{
-		m_pOBUParser[m_uiNumParsers]->FrameHeaderCopy(&m_pOBUParser[0]->getFrameHeaderBuffer());
-	
-		uint32_t obu_header_size = m_OBUWriter.write_obu_header(int(OBU_FRAME), 0 /*obu_extension*/, m_OBUWriter.getOBUOutBuf(), bit_offset);
-		total_obu_written_byte += obu_header_size;
-		uint32_t obu_header_offset = total_obu_written_byte;
-		uint32_t cur_obu_written_byte = obu_header_size;
-		bit_offset = total_obu_written_byte << 3;
+	//Frame header 정보는 frame_obu_num index를 따름
+	//Tile data는 obu_num을 따름 
+	////////////////////////////////////////////////////////
+	////////////////////  Write OBU FRAME 
+	/////////////////////////////////////////////////////////
+	int frame_obu_num = 0;
+	for (int obu_num = 1; obu_num < m_pOBUParser[0]->getNumberObu(); obu_num++) {
 
-		uint32_t frame_header_payload_size 
-			= m_pOBUParser[m_uiNumParsers]->RewriteFrameHeaderObu(m_tileSizes, m_OBUWriter.getOBUOutBuf(), bit_offset);
-		total_obu_written_byte += frame_header_payload_size;
-		cur_obu_written_byte += frame_header_payload_size;
-		bit_offset = total_obu_written_byte << 3;
+		prev_obu_written_byte = total_obu_written_byte;
 
-		uint32_t tile_header_payload_size = m_OBUWriter.write_tile_group_header(m_OBUWriter.getOBUOutBuf(), bit_offset);
-		total_obu_written_byte += tile_header_payload_size;
-		cur_obu_written_byte += tile_header_payload_size;
-		bit_offset = total_obu_written_byte << 3;
+		if (m_pOBUParser[0]->getObuType(obu_num) == OBU_FRAME) {
+			//Copy frame buffer m_pOBUParser[m_uiNumParsers] from &m_pOBUParser[0]
+			m_pOBUParser[m_uiNumParsers]->FrameHeaderCopy(&m_pOBUParser[0]->getFrameHeaderBuffer(frame_obu_num), frame_obu_num);
 
-		m_OBUWriter.addOBUOutBufIdx(obu_header_size + frame_header_payload_size + tile_header_payload_size);
-		assert(total_obu_written_byte == m_OBUWriter.getOBUOutBufIdx());
+			//Write OBU Header
+			uint32_t obu_header_size = m_OBUWriter.write_obu_header(int(OBU_FRAME), 0 /*obu_extension*/, m_OBUWriter.getOBUOutBuf(), bit_offset);
+			total_obu_written_byte += obu_header_size;
+			uint32_t obu_header_offset = total_obu_written_byte; //이 파라미터는 뒤에 length_field_size를 추가하기 위해 필요함 
+			uint32_t cur_obu_written_byte = obu_header_size;
+			bit_offset = total_obu_written_byte << 3;
 
-		//search remux tile
-		 int max_tile_size_byte = m_OBUWriter.choose_size_bytes(max_tile_size, 0);
-		//tcsb = 4;  // This is ignored
+			//Rewrite Frame Header
+			uint32_t frame_header_payload_size
+				= m_pOBUParser[m_uiNumParsers]->RewriteFrameHeaderObu(m_tileSizes, m_OBUWriter.getOBUOutBuf(), bit_offset, frame_obu_num);
+			total_obu_written_byte += frame_header_payload_size;
+			cur_obu_written_byte += frame_header_payload_size;
+			bit_offset = total_obu_written_byte << 3;
 
-		int obu_num = bRwSeqHdrsFlag ? 2 : 1;
-		int tile_data_payload_size = 0;
-		for (int i = 0; i < m_uiNumParsers; i++)
-		{
-			int TileSizeBytes = 4; //fixed in this code
+			//Rewrite Tile Header
+			uint32_t tile_header_payload_size = m_OBUWriter.write_tile_group_header(m_OBUWriter.getOBUOutBuf(), bit_offset);
+			total_obu_written_byte += tile_header_payload_size;
+			cur_obu_written_byte += tile_header_payload_size;
+			bit_offset = total_obu_written_byte << 3;
+			
+			//Syncronise buffer index
+			m_OBUWriter.addOBUOutBufIdx(obu_header_size + frame_header_payload_size + tile_header_payload_size);
+			assert(total_obu_written_byte == m_OBUWriter.getOBUOutBufIdx());
 
-			if(i < m_uiNumParsers - 1){
-				uint32_t tileSize = m_pOBUParser[i]->getTileSize(obu_num);
-				m_OBUWriter.mem_put_le32(m_OBUWriter.getOBUOutBuf(total_obu_written_byte), tileSize); //TileSizeBytes = 4; 
-				total_obu_written_byte += TileSizeBytes;
-				cur_obu_written_byte += TileSizeBytes;
-				bit_offset = total_obu_written_byte << 3;
 
-				m_OBUWriter.addOBUOutBufIdx(TileSizeBytes);
-				m_OBUWriter.reallocBufAdd((tileSize << 1) + 2 + 4);
-				m_OBUWriter.SetOBUOutBuf(m_pOBUParser[i]->getFrameObu(obu_num), tileSize);
+			//Rewrite Tile data payload
 
-				total_obu_written_byte += tileSize;
-				cur_obu_written_byte += tileSize;
-				tile_data_payload_size += (tileSize + TileSizeBytes);
+			int tile_data_payload_size = 0;
+			for (int i = 0; i < m_uiNumParsers; i++)
+			{
+				int TileSizeBytes = 4; //fixed in this code
+
+				if (i < m_uiNumParsers - 1) {
+					uint32_t tileSize = m_pOBUParser[i]->getTileSize(obu_num);
+					uint32_t tile_size_minus_1 = tileSize - 1;
+					//write tile size
+					m_OBUWriter.mem_put_le32(m_OBUWriter.getOBUOutBuf(total_obu_written_byte), tile_size_minus_1); //TileSizeBytes = 4; 
+					total_obu_written_byte += TileSizeBytes;
+					cur_obu_written_byte += TileSizeBytes;
+					m_OBUWriter.addOBUOutBufIdx(TileSizeBytes);
+					//bit_offset = total_obu_written_byte << 3;
+
+					//realloc memory
+					m_OBUWriter.reallocBufAdd((tile_size_minus_1 << 1) + 2 + 4);
+
+					//write tile data
+					m_OBUWriter.SetOBUOutBuf(m_pOBUParser[i]->getTlieData(obu_num), tileSize);
+
+					total_obu_written_byte += tileSize;
+					cur_obu_written_byte += tileSize;
+					tile_data_payload_size += (tileSize + TileSizeBytes);
+				}
+				else {
+					uint32_t tileSize = m_pOBUParser[i]->getTileSize(obu_num);
+					m_OBUWriter.reallocBufAdd((tileSize << 1) + 2 + 4);
+
+					m_OBUWriter.SetOBUOutBuf(m_pOBUParser[i]->getTlieData(obu_num), tileSize);
+					total_obu_written_byte += tileSize;
+					cur_obu_written_byte += tileSize;
+					tile_data_payload_size += (tileSize);
+				}
 			}
-			else {
-				uint32_t tileSize = m_pOBUParser[i]->getTileSize(obu_num);
-				m_OBUWriter.reallocBufAdd((tileSize << 1) + 2 + 4);
+			assert(total_obu_written_byte == m_OBUWriter.getOBUOutBufIdx());
 
-				m_OBUWriter.SetOBUOutBuf(m_pOBUParser[i]->getFrameObu(obu_num), tileSize);
-				total_obu_written_byte += tileSize;
-				cur_obu_written_byte += tileSize;
-				tile_data_payload_size += (tileSize);
+			uint32_t obu_payload_size = frame_header_payload_size + tile_header_payload_size + tile_data_payload_size;
+			const size_t length_field_size = m_OBUWriter.obu_memmove(obu_header_size, obu_payload_size, m_OBUWriter.getOBUOutBuf(), prev_obu_written_byte);
+			if (m_OBUWriter.write_uleb_obu_size(obu_header_offset, obu_payload_size, m_OBUWriter.getOBUOutBuf()) != AOM_CODEC_OK) {
+				return AOM_CODEC_ERROR;
 			}
+			total_obu_written_byte += length_field_size;
+			cur_obu_written_byte += length_field_size;
+			m_OBUWriter.addOBUOutBufIdx(length_field_size);
+			assert(total_obu_written_byte == m_OBUWriter.getOBUOutBufIdx());
 
+			frame_obu_num++;
 		}
-		assert(total_obu_written_byte == m_OBUWriter.getOBUOutBufIdx());
-		
-		uint32_t obu_payload_size = frame_header_payload_size + tile_header_payload_size + tile_data_payload_size;
-		const size_t length_field_size = m_OBUWriter.obu_memmove(obu_header_size, obu_payload_size, m_OBUWriter.getOBUOutBuf(), obu_header_offset);
-		if (m_OBUWriter.write_uleb_obu_size(obu_header_offset, obu_payload_size, m_OBUWriter.getOBUOutBuf()) != AOM_CODEC_OK) {
-			return AOM_CODEC_ERROR;
-		}
-		//length_field
-
 	}
-
-	//int j = bRwSeqHdrsFlag ? 2 : 1;
-	//for (; j < m_pOBUParser[0]->getNumberObu(); j++)
-	//	m_OBUWriter.SetOBUOutBuf(m_pOBUParser[0]->getFrameObu(j), m_pOBUParser[0]->getFrameObuSize(j));
 
 	pOutOBUs->pMemAddrOfOBU = m_OBUWriter.getOBUOutBuf();
 	pOutOBUs->uiSizeOfOBUs = m_OBUWriter.getOBUOutBufIdx();
-
+	assert(total_obu_written_byte == pOutOBUs->uiSizeOfOBUs);
 	//// error handling .....
 	//if (!m_HevcWriter.ValidateParameters())
 	//{

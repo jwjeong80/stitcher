@@ -9,6 +9,7 @@
 //#include "aom_dsp/bitreader_buffer.h"
 #include <stdint.h>
 #include "obu_header.h"
+#include "LargeFile.h"
 #ifndef MAX_OBU_NUM
 #define     MAX_OBU_NUM	(440 + 8) // = MAX_NUM_TILES + VPS/SPS/PPS...
 struct OBU

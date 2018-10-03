@@ -835,7 +835,7 @@ void CFrameHeader::encode_cdef(int NumPlanes, int enable_cdef, CBitWriter *wb) {
 void CFrameHeader::encode_restoration_mode(int NumPlanes, int enable_restoration, int use_128x128_superblock,
 	int subsampling_x, int subsampling_y, CBitWriter *wb) {
 	
-	if (enable_restoration) 
+	if (!enable_restoration) 
 		return;
 	if (m_allow_intrabc) 
 		return;
@@ -893,8 +893,10 @@ void CFrameHeader::encode_restoration_mode(int NumPlanes, int enable_restoration
  }
 
 void CFrameHeader::write_global_motion_params(int FrameIsIntra, CBitWriter *wb) {
-	 int frame;
-	 for (frame = LAST_FRAME; frame <= ALTREF_FRAME; ++frame) {
+	if (FrameIsIntra)
+		return;
+	int frame;
+	for (frame = LAST_FRAME; frame <= ALTREF_FRAME; ++frame) {
 		 wb->aom_wb_write_bit(m_is_global[frame]);
 
 		 //global motion is not aloo
@@ -923,6 +925,9 @@ void CFrameHeader::write_tile_info(int use_128x128_superblock, FrameSize_t *tile
 	m_maxLog2TileCols = tile_log2(1, AOMMIN(m_sbCols, MAX_TILE_COLS));
 	m_maxLog2TileRows = tile_log2(1, AOMMIN(m_sbRows, MAX_TILE_ROWS));
 	m_minLog2Tiles = AOMMAX(m_minLog2TileCols, tile_log2(m_maxTileAreaSb, m_sbRows * m_sbCols));
+
+	m_TileColsLog2 = tile_log2(1, m_uiNumTileCols);
+	m_TileRowsLog2 = tile_log2(1, m_uiNumTileRows);
 
 	m_uniform_tile_spacing_flag = 0; //This flag has to be re-considered
 	wb->aom_wb_write_bit(m_uniform_tile_spacing_flag);
@@ -972,13 +977,22 @@ void CFrameHeader::write_tile_info(int use_128x128_superblock, FrameSize_t *tile
 		int sb_offset = (1 << m_sbSize) - 1;
 		int width_sb = m_sbCols;
 		int startSb = 0, i;
+		int widestTileSb = 0;
 		for (i = 0; i < m_uiNumTileCols; i++) {
 			int size_sb = (tile_sizes[i].frame_width + sb_offset)>> m_sbSize;
-
 			wb->wb_write_uniform(AOMMIN(width_sb, m_maxTileWidthSb), size_sb - 1);
+			widestTileSb = AOMMAX(size_sb, widestTileSb);
 			width_sb -= size_sb;
 		}
 		assert(width_sb == 0);
+
+		if(m_minLog2Tiles > 0){
+			m_maxTileAreaSb = (m_sbRows * m_sbCols) >> (m_minLog2Tiles + 1);
+		 }
+		else {
+			m_maxTileAreaSb = m_sbRows * m_sbCols;
+		}
+		m_maxTileHeightSb = AOMMAX(m_maxTileAreaSb / widestTileSb, 1);
 
 		// rows
 		int height_sb = m_sbRows;
@@ -993,8 +1007,8 @@ void CFrameHeader::write_tile_info(int use_128x128_superblock, FrameSize_t *tile
 	//m_TileColsLog2 = m_uiNumTileCols;
 	//m_TileRowsLog2 = m_uiNumTileRows;
 
-	//if (m_uiNumTileCols * m_uiNumTileRows > 1) 
-	if(m_TileColsLog2 > 1 || m_TileRowsLog2 > 1)
+	if (m_uiNumTileCols * m_uiNumTileRows > 1) 
+	//if(m_TileColsLog2 > 1 || m_TileRowsLog2 > 1)
 	{
 		wb->aom_wb_write_literal(0, m_TileColsLog2 + m_TileRowsLog2);
 		// Number of bytes in tile size - 1

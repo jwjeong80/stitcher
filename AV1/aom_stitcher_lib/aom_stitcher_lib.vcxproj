@@ -128,6 +128,7 @@
     <ClCompile Include="bit_reader_c.cpp" />
     <ClCompile Include="bit_writer.cpp" />
     <ClCompile Include="FrameHeader.cpp" />
+    <ClCompile Include="LargeFile.cpp" />
     <ClCompile Include="OBUParser.cpp" />
     <ClCompile Include="OBUWriter.cpp" />
     <ClCompile Include="SequenceHeader.cpp" />
@@ -145,6 +146,7 @@
     <ClInclude Include="config.h" />
     <ClInclude Include="Define.h" />
     <ClInclude Include="FrameHeader.h" />
+    <ClInclude Include="LargeFile.h" />
     <ClInclude Include="OBUParser.h" />
     <ClInclude Include="OBUWriter.h" />
     <ClInclude Include="obu_header.h" />

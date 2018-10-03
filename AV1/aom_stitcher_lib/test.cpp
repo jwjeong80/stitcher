@@ -265,7 +265,7 @@ uint32_t __stdcall OnBStrStitchProc(void* pThis)
 	}
 
 	int j = 0;
-	while (!b_ctrl_c && j < 100)//&& uiNumFrames < 5)
+	while (!b_ctrl_c && j < 2)//&& uiNumFrames < 5)
 	{
 		// extract access units from bitstreams
 		for (int i = 0; i < (int)uiNumBStreams; i++)

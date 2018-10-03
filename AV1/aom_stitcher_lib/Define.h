@@ -26,7 +26,9 @@
 // definitions
 #define MAX_BIT_SIZE    (1024*1024)
 #define MAX_STREAMS     (440) /* 20x22 */
-#define MAX_OBUS_IN_TU     (10) /* 20x22 */
+#define MAX_OBUS_IN_TU     (3) //case 1) [1] Temporal Delimiter OBU, [2] Sequece Header OBU, [3] Frame Header OBU
+							   //case 2) [1] Temporal Delimiter OBU, [2] Frame Header OBU (ARF, no show), [3] Frame Header OBU (show, Overlapped frame)
+#define OBUS_IN_TU          2                     
 
 #define DISABLE_LINES       0
 #define STITCHER_FEATURES   1

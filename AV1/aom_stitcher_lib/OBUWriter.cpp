@@ -41,8 +41,6 @@ void COBUWriter::Create(uint32_t uiNumTileRows, uint32_t uiNumTileCols, bool bAn
 	m_OBUOutBuf = new uint8_t[INI_BUF_SIZE];
 	m_OBUBufSize = INI_BUF_SIZE;
 	m_OBUOutIdx = 0;
-	m_pOBUOutBufStart = m_OBUOutBuf;
-
 	//m_PsManager.Init();
 	//m_CavlcEncoder.setBitstream(&(m_OutputNALU.m_Bitstream));
 }
@@ -61,7 +59,6 @@ void COBUWriter::Destroy()
 
 		//SAFE_DELETES(m_pNewSliceSegHdrs[i]);
 	}
-	m_pOBUOutBufStart = NULL;
 	printf("Destroy\n");
 
 	SAFE_DELETES(m_OBUOutBuf);
@@ -69,10 +66,10 @@ void COBUWriter::Destroy()
 }
 
 
-void COBUWriter::SetTileData(const uint8_t *pTileHeader, const uint8_t* pTileData, int32_t iParserIdx, int iObuIdx) {
+void COBUWriter::SetTileData(const uint8_t *pTileHeader, const uint8_t* pTileData, int32_t iParserIdx, int iFrameObuIdx) {
 	// get only pointers
-	m_pTileHdrs[iParserIdx][iObuIdx] = pTileHeader;
-	m_pTileDatas[iParserIdx][iObuIdx] = pTileData;
+	m_pTileHdrs[iParserIdx][iFrameObuIdx] = pTileHeader;
+	m_pTileDatas[iParserIdx][iFrameObuIdx] = pTileData;
 }
 
 uint32_t COBUWriter::write_obu_header(int obu_type, int obu_extension, uint8_t *const dst, int bit_buffer_offset) {
@@ -166,7 +163,7 @@ int	 COBUWriter::reallocBuf(uint32_t uiNewBufSize)
 			{
 				memcpy(pTemp, m_OBUOutBuf, m_OBUOutIdx);
 			}
-			delete[] m_OBUOutBuf;
+			delete [] m_OBUOutBuf;
 			m_OBUOutBuf = pTemp;
 			m_OBUBufSize = uiNewBufSize;
 			return 1;

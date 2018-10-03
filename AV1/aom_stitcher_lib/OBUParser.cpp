@@ -73,6 +73,7 @@ COBUParser::~COBUParser(void)
 void COBUParser::Create(uint32_t uiNumTileRows, uint32_t uiNumTileCols)
 {
 	m_NumObu = 0;
+	m_numFrameOBU = 0;
 
 	m_uiNumTileRows = uiNumTileRows;
 	m_uiNumTileCols = uiNumTileCols;
@@ -250,6 +251,7 @@ bool COBUParser::DecodeOneOBUC(uint8_t *pBitStream, uint32_t uiBitstreamSize, bo
 	const uint8_t *data = pBitStream;
 	const uint8_t *data_end = pBitStream + uiBitstreamSize;
 	m_NumObu = 0;
+	m_numFrameOBU = 0;
 	int remain_sz = uiBitstreamSize;
 	int one_tile_size;
 	//pbi->seen_frame_header = 0;
@@ -278,13 +280,13 @@ bool COBUParser::DecodeOneOBUC(uint8_t *pBitStream, uint32_t uiBitstreamSize, bo
 
 		switch (obu_header.type) {
 		case OBU_SEQUENCE_HEADER:
-			m_ObuInfo[m_NumObu].m_pSeqHdrOBuStartAddr = data;
+			m_ObuInfo[m_NumObu].m_pSeqHdrObu = data;
 			m_ObuInfo[m_NumObu].m_SeqHdrObuHdrSize = bytes_read;
 			break;
 		case OBU_FRAME_HEADER:
 		case OBU_REDUNDANT_FRAME_HEADER:
 		case OBU_FRAME:
-			m_ObuInfo[m_NumObu].m_pFrameObuStartAddr = data;
+			m_ObuInfo[m_NumObu].m_pFrameObu = data;
 			m_ObuInfo[m_NumObu].m_FrameObuHdrSize = bytes_read;
 			m_ObuInfo[m_NumObu].m_FrameObuSize = bytes_read + payload_size;
 			break;
@@ -311,12 +313,12 @@ bool COBUParser::DecodeOneOBUC(uint8_t *pBitStream, uint32_t uiBitstreamSize, bo
 
 		CBitReader rb(data, data + payload_size, 0);
 
-		m_ObuHeader[m_NumObu] = obu_header;
+		m_ObuInfo[m_NumObu].m_obu_header = obu_header;
 		int tile_group_header_size = 0;
 		switch (obu_header.type) {
 		case OBU_TEMPORAL_DELIMITER:
 			decoded_payload_size = ReadTemporalDelimiterObu();
-			m_SeenFrameHeader = 0;
+			//m_SeenFrameHeader = 0;
 			break;
 		case OBU_SEQUENCE_HEADER:
 			if (!seq_header_received) {
@@ -327,7 +329,7 @@ bool COBUParser::DecodeOneOBUC(uint8_t *pBitStream, uint32_t uiBitstreamSize, bo
 				seq_header_received = 1;
 
 				remain_sz -= seq_header_size;
-				m_ObuInfo[m_NumObu].m_SeqHeaderDataSize = seq_header_size;
+				m_ObuInfo[m_NumObu].m_SeqHdrPayloadSize = seq_header_size;
 				m_ObuInfo[m_NumObu].m_SeqHdrSize = m_ObuInfo[m_NumObu].m_SeqHdrObuHdrSize + seq_header_size;
 				data += seq_header_size;
 			}
@@ -343,30 +345,17 @@ bool COBUParser::DecodeOneOBUC(uint8_t *pBitStream, uint32_t uiBitstreamSize, bo
 		case OBU_REDUNDANT_FRAME_HEADER:
 		case OBU_FRAME:
 			// Only decode first frame header received
-			m_ObuInfo[m_NumObu].m_pFrameHeaderStartAddr = data;
+			m_ObuInfo[m_NumObu].m_pFrameHeader = data;
 
-			if (!m_SeenFrameHeader /*||
-				(cm->large_scale_tile && !pbi->camera_frame_header_ready)*/) {
-				frame_header_size = ReadFrameHeaderObu(               //obu.c
-					&rb, data, obu_header.type != OBU_FRAME);
-				data += frame_header_size;
-				m_SeenFrameHeader = 1;
+			frame_header_size = ReadFrameHeaderObu(               //obu.c
+				&rb, data, obu_header.type != OBU_FRAME, m_numFrameOBU);
+			data += frame_header_size;
+			//m_SeenFrameHeader = 1;
 
-				m_ObuInfo[m_NumObu].m_FrameHeaderSize = frame_header_size;
-				//if (!pbi->ext_tile_debug && cm->large_scale_tile)
-				//	pbi->camera_frame_header_ready = 1;
-			}
-			else {
-				//// TODO(wtc): Verify that the frame_header_obu is identical to the
-				//// original frame_header_obu. For now just skip frame_header_size
-				//// bytes in the bit buffer.
-				//if (frame_header_size > payload_size) {
-				//	cm->error.error_code = AOM_CODEC_CORRUPT_FRAME;
-				//	return -1;
-				//}
-				//assert(rb.bit_offset == 0);
-				//rb.bit_offset = 8 * frame_header_size;
-			}
+			m_ObuInfo[m_NumObu].m_FrameHdrSize = frame_header_size;
+
+			m_numFrameOBU++;
+
 			decoded_payload_size = frame_header_size;
 			//pbi->frame_header_size = frame_header_size;
 
@@ -377,21 +366,21 @@ bool COBUParser::DecodeOneOBUC(uint8_t *pBitStream, uint32_t uiBitstreamSize, bo
 			remain_sz -= frame_header_size;
 		case OBU_TILE_GROUP:
 			
-			if (!m_SeenFrameHeader) {
-				return -1;
-			}
+			//if (!m_SeenFrameHeader) {
+			//	return -1;
+			//}
 			if (obu_payload_offset > payload_size) {
 				return -1;
 			}
 
-			m_ObuInfo[m_NumObu].m_pTileHeaderStartAddr = data;
+			m_ObuInfo[m_NumObu].m_pTileHeader = data;
 
 			int start_tile, end_tile;
-			tile_group_header_size = ReadTileGroupHeader(&rb, &start_tile, &end_tile, obu_header.type == OBU_FRAME);
+			tile_group_header_size = ReadTileGroupHeader(&rb, &start_tile, &end_tile, obu_header.type == OBU_FRAME, m_numFrameOBU);
 			if (tile_group_header_size == -1 || rb.ByteAlignment())
 				return 0;
 			data += tile_group_header_size;
-			m_ObuInfo[m_NumObu].m_pTileDataStartAddr = data;
+			m_ObuInfo[m_NumObu].m_pTilePayload = data;
 
 			//we do not decode tiles 
 			one_tile_size = payload_size - frame_header_size - tile_group_header_size;
@@ -399,8 +388,8 @@ bool COBUParser::DecodeOneOBUC(uint8_t *pBitStream, uint32_t uiBitstreamSize, bo
 			data += one_tile_size;
 						
 			//get_tile_buffer;
-			m_ObuInfo[m_NumObu].m_TileHeaderSize = tile_group_header_size;
-			m_ObuInfo[m_NumObu].m_TileDataSize = one_tile_size;
+			m_ObuInfo[m_NumObu].m_TileHdrSize = tile_group_header_size;
+			m_ObuInfo[m_NumObu].m_TilePayloadSize = one_tile_size;
 			break;
 		default:
 			// Skip unrecognized OBUs
@@ -540,11 +529,11 @@ uint32_t COBUParser::ReadSequenceHeaderObu(CBitReader *rb)
 }
 
 
-uint32_t COBUParser::ReadFrameHeaderObu(CBitReader *rb, const uint8_t *data, int trailing_bits_present)
+uint32_t COBUParser::ReadFrameHeaderObu(CBitReader *rb, const uint8_t *data, int trailing_bits_present, uint32_t num_frame_obu)
 {
 	const uint32_t saved_bit_offset = rb->AomRbReadBitOffset();
 	CSequenceHeader *pSh = &m_ShBuffer;
-	CFrameHeader *pFh = &m_FhBuffer;
+	CFrameHeader *pFh = &m_FhBuffer[num_frame_obu];
 
 	pFh->m_ParserIdx = m_ParserIdx;
 	pFh->m_uiNumTileRows = m_uiNumTileRows;
@@ -698,8 +687,8 @@ uint32_t COBUParser::ReadFrameHeaderObu(CBitReader *rb, const uint8_t *data, int
 				if (pSh->ShReadDecoderModelPresentForThisOp(opNum)) {
 					int opPtIdc = pSh->ShReadOperatingPointIdc(opNum);
 
-					int inTemporalLayer = (opPtIdc >> m_ObuHeader[m_NumObu].temporal_layer_id) & 1;
-					int	inSpatialLayer = (opPtIdc >> (m_ObuHeader[m_NumObu].spatial_layer_id + 8)) & 1;
+					int inTemporalLayer = (opPtIdc >> m_ObuInfo[m_NumObu].m_obu_header.temporal_layer_id) & 1;
+					int	inSpatialLayer = (opPtIdc >> (m_ObuInfo[m_NumObu].m_obu_header.spatial_layer_id + 8)) & 1;
 						
 					if (opPtIdc == 0 || (inTemporalLayer && inSpatialLayer)) {
 						pFh->FhParserBufferRemovalTime(opNum, rb->AomRbReadLiteral(n));
@@ -898,10 +887,10 @@ uint32_t COBUParser::ReadFrameHeaderObu(CBitReader *rb, const uint8_t *data, int
 
 
 int32_t COBUParser::ReadTileGroupHeader(CBitReader *rb, int *start_tile, int *end_tile,
-	int tile_start_implicit) {
+	int tile_start_implicit, uint32_t num_frame_obu) {
 	uint32_t saved_bit_offset = rb->AomRbReadBitOffset();
 
-	CFrameHeader *pFh = &m_FhBuffer;
+	CFrameHeader *pFh = &m_FhBuffer[num_frame_obu];
 	
 	int tile_start_and_end_present_flag = 0;
 	const int num_tiles = pFh->FhReadTileCols() * pFh->FhReadTileRows();
@@ -928,8 +917,9 @@ int32_t COBUParser::ReadTileGroupHeader(CBitReader *rb, int *start_tile, int *en
 }
 
 
-uint32_t COBUParser::RewriteFrameHeaderObu(FrameSize_t *tile_sizes, uint8_t *const dst, int bit_buffer_offset) {
-	CFrameHeader *pFh = &m_FhBuffer;
+uint32_t COBUParser::RewriteFrameHeaderObu(FrameSize_t *tile_sizes, uint8_t *const dst, 
+	int bit_buffer_offset, uint32_t num_frame_obu) {
+	CFrameHeader *pFh = &m_FhBuffer[num_frame_obu];
 	CSequenceHeader *pSh = &m_ShBuffer;
 	CBitWriter wb(dst, bit_buffer_offset);
 	uint32_t before_size = bit_buffer_offset >> 3;
@@ -1052,8 +1042,8 @@ uint32_t COBUParser::RewriteFrameHeaderObu(FrameSize_t *tile_sizes, uint8_t *con
 				if (pSh->ShReadDecoderModelPresentForThisOp(op_num)) {
 
 					int opPtIdc = pSh->ShReadOperatingPointIdc(op_num);
-					int inTemporalLayer = (opPtIdc >> m_ObuHeader[m_NumObu].temporal_layer_id) & 1;
-					int	inSpatialLayer = (opPtIdc >> (m_ObuHeader[m_NumObu].spatial_layer_id + 8)) & 1;
+					int inTemporalLayer = (opPtIdc >> m_ObuInfo[m_NumObu].m_obu_header.temporal_layer_id) & 1;
+					int	inSpatialLayer = (opPtIdc >> (m_ObuInfo[m_NumObu].m_obu_header.spatial_layer_id + 8)) & 1;
 
 					int buffer_removal_time = pFh->FhReadBufferRemovalTime(op_num);
 					if (opPtIdc == 0 || (inTemporalLayer && inSpatialLayer)) {
@@ -1068,59 +1058,65 @@ uint32_t COBUParser::RewriteFrameHeaderObu(FrameSize_t *tile_sizes, uint8_t *con
 		}
 	}
 
-	int refresh_frame_flags = pFh->FhReadRefreshFrameFlags();
-	if (frame_type == KEY_FRAME) {
-		if (show_frame) {  // unshown keyframe (forward keyframe)
-			wb.aom_wb_write_literal(refresh_frame_flags, REF_FRAMES);
-		}
-		else {
-			assert(refresh_frame_flags == 0xFF);
-		}
-	}
-	else {
-		if (frame_type == INTRA_ONLY_FRAME) {
-			assert(refresh_frame_flags != 0xFF);
-			int updated_fb = -1;
-			for (int i = 0; i < REF_FRAMES; i++) {
-				// If more than one frame is refreshed, it doesn't matter which one
-				// we pick, so pick the first.
-				if (refresh_frame_flags & (1 << i)) {
-					updated_fb = i;
-					break;
-				}
-			}
-			assert(updated_fb >= 0);
-			//cm->fb_of_context_type[cm->frame_context_idx] = updated_fb;
-			wb.aom_wb_write_literal(refresh_frame_flags, REF_FRAMES);
-		}
-		else if (frame_type == INTER_FRAME || frame_type == SWITCH_FRAME) {
-			if (frame_type == INTER_FRAME) {
-				wb.aom_wb_write_literal(refresh_frame_flags, REF_FRAMES);
-			}
-			else {
-				assert(frame_type == SWITCH_FRAME && refresh_frame_flags == 0xFF);
-			}
-			int updated_fb = -1;
-			for (int i = 0; i < REF_FRAMES; i++) {
-				// If more than one frame is refreshed, it doesn't matter which one
-				// we pick, so pick the first.
-				if (refresh_frame_flags & (1 << i)) {
-					updated_fb = i;
-					break;
-				}
-			}
-			// large scale tile sometimes won't refresh any fbs
-			//if (updated_fb >= 0) {
-			//	cm->fb_of_context_type[cm->frame_context_idx] = updated_fb;
-			//}
+	//int refresh_frame_flags = pFh->FhReadRefreshFrameFlags();
+	//if (frame_type == KEY_FRAME) {
+	//	if (show_frame) {  // unshown keyframe (forward keyframe)
+	//		wb.aom_wb_write_literal(refresh_frame_flags, REF_FRAMES);
+	//	}
+	//	else {
+	//		assert(refresh_frame_flags == 0xFF);
+	//	}
+	//}
+	//else {
+	//	if (frame_type == INTRA_ONLY_FRAME) {
+	//		assert(refresh_frame_flags != 0xFF);
+	//		int updated_fb = -1;
+	//		for (int i = 0; i < REF_FRAMES; i++) {
+	//			// If more than one frame is refreshed, it doesn't matter which one
+	//			// we pick, so pick the first.
+	//			if (refresh_frame_flags & (1 << i)) {
+	//				updated_fb = i;
+	//				break;
+	//			}
+	//		}
+	//		assert(updated_fb >= 0);
+	//		//cm->fb_of_context_type[cm->frame_context_idx] = updated_fb;
+	//		wb.aom_wb_write_literal(refresh_frame_flags, REF_FRAMES);
+	//	}
+	//	else if (frame_type == INTER_FRAME || frame_type == SWITCH_FRAME) {
+	//		if (frame_type == INTER_FRAME) {
+	//			wb.aom_wb_write_literal(refresh_frame_flags, REF_FRAMES);
+	//		}
+	//		else {
+	//			assert(frame_type == SWITCH_FRAME && refresh_frame_flags == 0xFF);
+	//		}
+	//		int updated_fb = -1;
+	//		for (int i = 0; i < REF_FRAMES; i++) {
+	//			// If more than one frame is refreshed, it doesn't matter which one
+	//			// we pick, so pick the first.
+	//			if (refresh_frame_flags & (1 << i)) {
+	//				updated_fb = i;
+	//				break;
+	//			}
+	//		}
+	//		// large scale tile sometimes won't refresh any fbs
+	//		//if (updated_fb >= 0) {
+	//		//	cm->fb_of_context_type[cm->frame_context_idx] = updated_fb;
+	//		//}
 
-			//if (!cpi->refresh_frame_mask) {
-			//	// NOTE: "cpi->refresh_frame_mask == 0" indicates that the coded frame
-			//	//       will not be used as a reference
-			//	cm->is_reference_frame = 0;
-			//}
-		}
-	}
+	//		//if (!cpi->refresh_frame_mask) {
+	//		//	// NOTE: "cpi->refresh_frame_mask == 0" indicates that the coded frame
+	//		//	//       will not be used as a reference
+	//		//	cm->is_reference_frame = 0;
+	//		//}
+	//	}
+	//}
+	int refresh_frame_flags = pFh->FhReadRefreshFrameFlags();
+	if (frame_type == SWITCH_FRAME || (frame_type == KEY_FRAME && show_frame))
+		assert(refresh_frame_flags == 0xFF);
+	else
+		wb.aom_wb_write_literal(refresh_frame_flags, REF_FRAMES);
+		
 
 	if (!FrameIsIntra || refresh_frame_flags != 0xFF) {
 		// Write all ref frame order hints if error_resilient_mode == 1
