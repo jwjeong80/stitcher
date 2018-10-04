@@ -77,12 +77,11 @@ void COBUParser::Create(uint32_t uiNumTileRows, uint32_t uiNumTileCols)
 
 	m_uiNumTileRows = uiNumTileRows;
 	m_uiNumTileCols = uiNumTileCols;
-	//m_ShManager.Init();
+
 }
 
 void COBUParser::Destroy()
 {
-	//m_ShManager.Destroy();
 }
 
 // Picture prediction structures (0-12 are predefined) in scalability metadata.
@@ -1239,4 +1238,3 @@ uint32_t COBUParser::RewriteFrameHeaderObu(FrameSize_t *tile_sizes, uint8_t *con
 	uint32_t size = wb.aom_wb_bytes_written();
 	return size - before_size;
 }
-

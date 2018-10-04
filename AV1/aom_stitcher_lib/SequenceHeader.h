@@ -131,6 +131,9 @@ class CSequenceHeader : CBitReader
 public:
 	CSequenceHeader();
 	virtual ~CSequenceHeader();
+	
+	void ShInitialize();
+
 
 	int is_valid_seq_level_idx(uint8_t seq_level_idx) {
 		return seq_level_idx < 24 || seq_level_idx == 31;
@@ -212,20 +215,18 @@ public:
 	int ShReadFrameHeight() { return m_FrameHeight; }
 	
 	// Sequence header writer 
-	uint32_t write_sequence_header_obu(uint8_t *const dst, int bit_buffer_offset);
+	uint32_t write_sequence_header_obu(FrameSize_t *tileSizes, uint8_t *const dst, int bit_buffer_offset);
 	void write_profile(BITSTREAM_PROFILE profile, CBitWriter *wb);
 	void write_bitstream_level(BitstreamLevel bl, CBitWriter *wb);
 	uint8_t major_minor_to_seq_level_idx(BitstreamLevel bl);
 	void write_timing_info_header(CBitWriter *wb);
 	void write_decoder_model_info(CBitWriter *wb);
 	void write_dec_model_op_parameters(CBitWriter *wb, int op_num);
-	void write_sequence_header(CBitWriter *wb);
+	void write_sequence_header(FrameSize_t *tileSizes, CBitWriter *wb);
 	void write_color_config(CBitWriter *wb);
+	
+	uint32_t SequencHeaderCompare(CSequenceHeader *pSh);
 
-	static void InitilizeFrameSize() {
-		m_EntireFrameWidth = 0;
-		m_EntireFrameHeight = 0;
-	}
 
 	int m_ParserIdx;
 	uint32_t m_uiNumTileRows;
@@ -300,28 +301,4 @@ private:
 	int m_OrderHintBits;
 
 
-	static int m_EntireFrameWidth;
-	static int m_EntireFrameHeight;
-};
-
-class ShManager
-{
-public:
-	ShManager();
-	~ShManager();
-
-	void		Init();
-	void		Destroy();
-
-	void		storeSequenceHeader(CSequenceHeader *seqHeader);
-
-	CSequenceHeader*	getStoredVPS(int id) { return	m_ShBuffer[0]; }
-
-	CSequenceHeader*	getSequenceHeader() { return	m_ShBuffer[0]; };
-
-private:
-
-	CSequenceHeader*	m_ShBuffer[1];
-
-	int			m_ShId;
 };

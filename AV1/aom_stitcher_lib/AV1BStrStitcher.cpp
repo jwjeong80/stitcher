@@ -83,10 +83,15 @@ int CAV1BStrStitcher::StitchSingleOBU(const OBU *pInpOBUs, uint32_t uiAnnexBFlag
 	bool bSeqHeaderSame = true;
 	 //decode all OBUs
 
+
+
 	//CSequenceHeader::InitilizeFrameSize();
 	uint32_t max_tile_size = 0;
 	for (int i = 0; i < m_uiNumParsers; i++)
 	{
+		for (int k = 0; k < OBUS_IN_TU; k++)
+			m_pOBUParser[i]->FrameHeaderInit(k);
+
 		m_pOBUParser[i]->OBUInfoInitilize();
 		pBitstream = pInpOBUs[i].pMemAddrOfOBU;
 		uiBitstreamSize = pInpOBUs[i].uiSizeOfOBUs;
@@ -102,20 +107,7 @@ int CAV1BStrStitcher::StitchSingleOBU(const OBU *pInpOBUs, uint32_t uiAnnexBFlag
 			assert((m_pOBUParser[i]->getFhFrameWidth(0) == m_pOBUParser[i]->getFhFrameWidth(1)) &&
 			(m_pOBUParser[i]->getFhFrameHeight(0) == m_pOBUParser[i]->getFhFrameHeight(1)));
 
-		//if (bRwSeqHdrsFlag && i > 1) {
-		//	if (m_pOBUParser[0]->getSeqHeaderSize() == m_pOBUParser[i]->getSeqHeaderSize()) {
-		//		int same = memcmp(m_pOBUParser[0]->getSeqHeader(), m_pOBUParser[i]->getSeqHeader(), m_pOBUParser[i]->getSeqHeaderSize());
-		//		bool bRwSeqHdrsSame = same == 0 ? true : false;
-		//		bRwSeqHdrsFlag = bRwSeqHdrsFlag && bRwSeqHdrsSame;
-		//		if(!bRwSeqHdrsSame)
-		//			printf("Sequence memory datas are different at %d \n", i);
-		//	}
-		//	else {
-		//		bRwSeqHdrsFlag = false;
-		//		printf("Sequence memory sizes are different \n");
-		//	}
-
-		//}
+		
 		//// load pointers of header information from HevcParser
 		//assert(m_pOBUParser[i]->getNumberObu() == 3);
 		int frame_obu_num = 0;
@@ -145,12 +137,16 @@ int CAV1BStrStitcher::StitchSingleOBU(const OBU *pInpOBUs, uint32_t uiAnnexBFlag
 	bit_offset = 16; //temporal delimiter: 2byte * 8 = 16bit
 	total_obu_written_byte = 2;
 	
-
 	////////////////////////////////////////////////////////////////
 	/////////////// Write Sequence Header
 	////////////////////////////////////////////////////////////////
 	prev_obu_written_byte = total_obu_written_byte;
 	if (bRwSeqHdrsFlag) {
+		//Check
+		for (int i = 1; i < m_uiNumParsers; i++) {	
+			m_pOBUParser[0]->SequenceHdrCompare(&m_pOBUParser[i]->getSeqHeaderBuffer());
+		}
+
 		m_pOBUParser[m_uiNumParsers]->SequenceHeaderCopy(&m_pOBUParser[0]->getSeqHeaderBuffer());
 		
 		//write sequence header obu
@@ -161,7 +157,7 @@ int CAV1BStrStitcher::StitchSingleOBU(const OBU *pInpOBUs, uint32_t uiAnnexBFlag
 		bit_offset = total_obu_written_byte << 3;
 		//uint32_t obu_header_offset = written_byte
 
-		uint32_t obu_payload_size = m_pOBUParser[m_uiNumParsers]->RewriteSequenceHeaderObu(m_OBUWriter.getOBUOutBuf(), bit_offset);
+		uint32_t obu_payload_size = m_pOBUParser[m_uiNumParsers]->RewriteSequenceHeaderObu(m_tileSizes, m_OBUWriter.getOBUOutBuf(), bit_offset);
 		total_obu_written_byte += obu_payload_size;
 		cur_obu_written_byte += obu_payload_size;
 
@@ -192,6 +188,10 @@ int CAV1BStrStitcher::StitchSingleOBU(const OBU *pInpOBUs, uint32_t uiAnnexBFlag
 		if (m_pOBUParser[0]->getObuType(obu_num) == OBU_FRAME) {
 			//Copy frame buffer m_pOBUParser[m_uiNumParsers] from &m_pOBUParser[0]
 			m_pOBUParser[m_uiNumParsers]->FrameHeaderCopy(&m_pOBUParser[0]->getFrameHeaderBuffer(frame_obu_num), frame_obu_num);
+
+			//for (int parseIdx = 1; parseIdx < m_uiNumParsers; parseIdx++) {
+			//	m_pOBUParser[0]->FrameHdrCompare(&m_pOBUParser[parseIdx]->getFrameHeaderBuffer(frame_obu_num), frame_obu_num);
+			//}
 
 			//Write OBU Header
 			uint32_t obu_header_size = m_OBUWriter.write_obu_header(int(OBU_FRAME), 0 /*obu_extension*/, m_OBUWriter.getOBUOutBuf(), bit_offset);

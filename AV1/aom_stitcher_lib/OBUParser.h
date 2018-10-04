@@ -169,7 +169,7 @@ public:
 	bool                DecodeOneOBU(uint8_t *pBitStream, uint32_t uiBitstreamSize, bool AnnexB);
 
 	void OBUInfoInitilize() {
-		for(int i=0; i< 10; i++)
+		for(int i=0; i< MAX_OBUS_IN_TU; i++)
 			m_ObuInfo[i].initilize();
 	}
 
@@ -183,6 +183,17 @@ public:
 		memcpy(&m_FhBuffer[idx], SourceFh, sizeof(CFrameHeader));
 	}
 
+	uint32_t SequenceHdrCompare(CSequenceHeader *srcSH) {
+		return m_ShBuffer.SequencHeaderCompare(srcSH);
+	}
+
+	uint32_t FrameHdrCompare(CFrameHeader *srcFH, int idx) {
+		return m_FhBuffer[idx].FrameHeaderCompare(srcFH);
+	}
+	void FrameHeaderInit(int idx) {
+		return m_FhBuffer[idx].InitZeroParameterSet();
+	}
+	
 	COBUParser& operator=(const COBUParser& rhs) {
 		memcpy(&this->m_ShBuffer, &rhs.m_ShBuffer, sizeof(CSequenceHeader));
 		return *this;
@@ -217,9 +228,9 @@ public:
 	 uint32_t ReadFrameHeaderObu(CBitReader *rb, const uint8_t *data, int trainiling_bits_present, uint32_t num_frame_obu);
 	 int32_t ReadTileGroupHeader(CBitReader *rb, int *start_tile, int *end_tile, int tile_start_implicit, uint32_t num_frame_obu);
 
-	 uint32_t RewriteSequenceHeaderObu(uint8_t *const dst, int bit_buffer_offset) {
+	 uint32_t RewriteSequenceHeaderObu(FrameSize_t *tileSizes, uint8_t *const dst, int bit_buffer_offset) {
 		 CSequenceHeader *pSh = &m_ShBuffer;
-		 return pSh->write_sequence_header_obu(dst, bit_buffer_offset);
+		 return pSh->write_sequence_header_obu(tileSizes, dst, bit_buffer_offset);
 	 }
 	 uint32_t RewriteFrameHeaderObu(FrameSize_t *tile_sizes, uint8_t *const dst, int bit_buffer_offset, uint32_t num_frame_obu);
 
@@ -249,12 +260,12 @@ public:
 	 CSequenceHeader getSeqHeaderBuffer() { return m_ShBuffer; }
 	 CFrameHeader getFrameHeaderBuffer(int idx) { return m_FhBuffer[idx]; }
 
+
+
 private:
 	CSequenceHeader      m_ShBuffer;
 	CFrameHeader         m_FhBuffer[OBUS_IN_TU];
-	//ShManager            m_ShManager;                // Parameter Set Manager
 	COBUInfo             m_ObuInfo[MAX_OBUS_IN_TU];                   // storage for slice header & segment data
-	//ObuHeader            m_ObuHeader[MAX_OBUS_IN_TU];
 	int                  m_NumObu;
 	int                  m_ParserIdx;
 	uint32_t            m_uiNumTileRows;

@@ -1,6 +1,6 @@
 #include "FrameHeader.h"
 #include <stdio.h>
-
+#include <memory.h>
 void CFrameHeader::FhSetRefValandOrderHint()
 {
 	for (int i = 0; i < NUM_REF_FRAMES; i++) {
@@ -1021,4 +1021,444 @@ void CFrameHeader::write_tile_info(int use_128x128_superblock, FrameSize_t *tile
 	else {
 		m_context_update_tile_id = 0;
 	}
+}
+
+uint32_t CFrameHeader::FrameHeaderCompare(CFrameHeader *pFh) {
+	assert(m_idLen == pFh->m_idLen);
+	assert(m_show_existing_frame == pFh->m_show_existing_frame);
+	assert(m_frame_to_show_map_idx == pFh->m_frame_to_show_map_idx);
+	assert(m_display_frame_id == pFh->m_display_frame_id);
+	assert(m_frame_type == pFh->m_frame_type);
+	assert(m_show_frame == pFh->m_show_frame);
+	assert(m_showable_frame == pFh->m_showable_frame);
+	assert(m_error_resilient_mode == pFh->m_error_resilient_mode);
+	assert(m_frame_presentation_time == pFh->m_frame_presentation_time);
+
+	assert(m_refresh_frame_flags == pFh->m_refresh_frame_flags);
+	assert(m_disable_cdf_update == pFh->m_disable_cdf_update);
+	assert(m_allow_screen_content_tools == pFh->m_allow_screen_content_tools);
+
+	assert(m_force_integer_mv == pFh->m_force_integer_mv);
+	assert(m_current_frame_id == pFh->m_current_frame_id);
+	assert(m_frame_size_override_flag == pFh->m_frame_size_override_flag);
+	assert(m_order_hint == pFh->m_order_hint);
+	assert(m_primary_ref_frame == pFh->m_primary_ref_frame);
+
+	assert(m_buffer_removal_time_present_flag == pFh->m_buffer_removal_time_present_flag);
+	assert(m_refresh_frame_flagss == pFh->m_refresh_frame_flagss);
+	
+	for (int i = 0; i < MAX_NUM_OPERATING_POINTS; i++) {
+		assert(m_buffer_removal_time[i] == pFh->m_buffer_removal_time[i]);
+	}
+	for (int i = 0; i < INTER_REFS_PER_FRAME; i++) {
+		assert(m_ref_order_hint[i] == pFh->m_ref_order_hint[i]);
+		assert(m_ref_frame_idx[i] == pFh->m_ref_frame_idx[i]);
+	}
+
+	assert(m_allow_high_precision_mv == pFh->m_allow_high_precision_mv);
+	assert(m_use_ref_frame_mvs == pFh->m_use_ref_frame_mvs);
+	assert(m_allow_intrabc == pFh->m_allow_intrabc);
+
+	assert(m_frame_width_minus_1 == pFh->m_frame_width_minus_1);
+	assert(m_frame_height_minus_1 == pFh->m_frame_height_minus_1);
+
+	assert(m_use_superres == pFh->m_use_superres);
+	assert(m_coded_denom == pFh->m_coded_denom);
+
+	assert(m_render_and_frame_size_different == pFh->m_render_and_frame_size_different);
+	assert(m_render_width_minus_1 == pFh->m_render_width_minus_1);
+	assert(m_render_height_minus_1 == pFh->m_render_height_minus_1);
+
+	assert(m_frame_refs_short_signaling == pFh->m_frame_refs_short_signaling);
+	assert(m_last_frame_idx == pFh->m_last_frame_idx);
+	assert(m_gold_frame_idx == pFh->m_gold_frame_idx);
+	assert(m_delta_frame_id_minus_1 == pFh->m_delta_frame_id_minus_1);
+
+	assert(m_found_ref == pFh->m_found_ref);
+
+	assert(m_is_filter_switchable == pFh->m_is_filter_switchable);
+	assert(m_interpolation_filter == pFh->m_interpolation_filter);
+	assert(m_is_motion_mode_switchable == pFh->m_is_motion_mode_switchable);
+	assert(m_disable_frame_end_update_cdf == pFh->m_disable_frame_end_update_cdf);
+
+	assert(m_uniform_tile_spacing_flag == pFh->m_uniform_tile_spacing_flag);
+	assert(m_increment_tile_cols_log2 == pFh->m_increment_tile_cols_log2);
+	assert(m_increment_tile_rows_log2 == pFh->m_increment_tile_rows_log2);
+	assert(m_width_in_sbs_minus_1 == pFh->m_width_in_sbs_minus_1);
+	assert(m_height_in_sbs_minus_1 == pFh->m_height_in_sbs_minus_1);
+	assert(m_context_update_tile_id == pFh->m_context_update_tile_id);
+	assert(m_tile_size_bytes_minus_1 == pFh->m_tile_size_bytes_minus_1);
+
+	assert(m_base_q_idx == pFh->m_base_q_idx);
+	assert(m_diff_uv_delta == pFh->m_diff_uv_delta);
+	assert(m_using_qmatrix == pFh->m_using_qmatrix);
+	assert(m_qm_y == pFh->m_qm_y);
+	assert(m_qm_u == pFh->m_qm_u);
+	assert(m_qm_v == pFh->m_qm_v);
+
+	assert(m_delta_coded == pFh->m_delta_coded);
+	assert(m_delta_q == pFh->m_delta_q);
+	assert(m_DeltaQYDc == pFh->m_DeltaQYDc);
+	assert(m_DeltaQUDc == pFh->m_DeltaQUDc);
+	assert(m_DeltaQUAc == pFh->m_DeltaQUAc);
+	assert(m_DeltaQVDc == pFh->m_DeltaQVDc);
+	assert(m_DeltaQVAc == pFh->m_DeltaQVAc);
+
+	assert(m_segmentation_enabled == pFh->m_segmentation_enabled);
+	assert(m_segmentation_update_map == pFh->m_segmentation_update_map);
+	assert(m_segmentation_temporal_update == pFh->m_segmentation_temporal_update);
+	assert(m_segmentation_update_data == pFh->m_segmentation_update_data);
+	assert(m_feature_enabled == pFh->m_feature_enabled);
+	assert(m_feature_value == pFh->m_feature_value);
+
+	assert(m_delta_q_present == pFh->m_delta_q_present);
+	assert(m_delta_q_res == pFh->m_delta_q_res);
+	assert(m_delta_lf_present == pFh->m_delta_lf_present);
+	assert(m_delta_lf_res == pFh->m_delta_lf_res);
+	assert(m_delta_lf_multi == pFh->m_delta_lf_multi);
+
+	for (int i = 0; i < 4; i++) {
+		assert(m_loop_filter_level[i] == pFh->m_loop_filter_level[i]);
+	}
+
+	assert(m_loop_filter_sharpness == pFh->m_loop_filter_sharpness);
+	assert(m_loop_filter_delta_enabled == pFh->m_loop_filter_delta_enabled);
+	assert(m_loop_filter_delta_update == pFh->m_loop_filter_delta_update);
+
+	for (int i = 0; i < TOTAL_REFS_PER_FRAME; i++) {
+		assert(m_update_ref_delta[i] == pFh->m_update_ref_delta[i]);
+		assert(m_loop_filter_ref_deltas[i] == pFh->m_loop_filter_ref_deltas[i]);
+	}
+	for (int i = 0; i < 2; i++) {
+		assert(m_update_mode_delta[i] == pFh->m_update_mode_delta[i]);
+		assert(m_loop_filter_mode_deltas[i] == pFh->m_loop_filter_mode_deltas[i]);
+	}
+
+	assert(m_cdef_damping_minus_3 == pFh->m_cdef_damping_minus_3);
+	assert(m_cdef_bits == pFh->m_cdef_bits);
+	assert(m_CdefDamping == pFh->m_CdefDamping);
+
+	for (int i = 0; i < 8; i++) {
+		assert(m_cdef_y_pri_strength[i] == pFh->m_cdef_y_pri_strength[i]);
+		assert(m_cdef_y_sec_strength[i] == pFh->m_cdef_y_sec_strength[i]);
+		assert(m_cdef_uv_pri_strength[i] == pFh->m_cdef_uv_pri_strength[i]);
+		assert(m_cdef_uv_sec_strength[i] == pFh->m_cdef_uv_sec_strength[i]);
+	}
+
+	for (int i = 0; i < 3; i++) {
+		assert(m_lr_type[i] == pFh->m_lr_type[i]);
+		assert(m_FrameRestorationType[i] == pFh->m_FrameRestorationType[i]);
+		assert(m_LoopRestorationSize[i] == pFh->m_LoopRestorationSize[i]);
+	}
+
+	assert(m_lr_unit_shift == pFh->m_lr_unit_shift);
+	assert(m_lr_unit_extra_shift == pFh->m_lr_unit_extra_shift);
+	assert(m_lr_uv_shift == pFh->m_lr_uv_shift);
+	assert(m_UsesLr == pFh->m_UsesLr);
+	assert(m_usesChromaLr == pFh->m_usesChromaLr);
+
+	assert(m_tx_mode_select == pFh->m_tx_mode_select);
+	assert(m_TxMode == pFh->m_TxMode);
+
+	
+	assert(m_reference_select == pFh->m_reference_select);
+	assert(m_skipModeAllowed == pFh->m_skipModeAllowed);
+	assert(m_forwardIdx == pFh->m_forwardIdx);
+	assert(m_backwardIdx == pFh->m_backwardIdx);
+	assert(m_forwardHint == pFh->m_forwardHint);
+
+	assert(m_secondForwardIdx == pFh->m_secondForwardIdx);
+	assert(m_secondForwardHint == pFh->m_secondForwardHint);
+	assert(m_skip_mode_present == pFh->m_skip_mode_present);
+	
+	for (int i = 0; i < 2; i++) {
+		assert(m_SkipModeFrame[i] == pFh->m_SkipModeFrame[i]);
+	}
+
+	assert(m_allow_warped_motion == pFh->m_allow_warped_motion);
+	assert(m_reduced_tx_set == pFh->m_reduced_tx_set);
+	assert(m_is_rot_zoom == pFh->m_is_rot_zoom);
+	assert(m_is_translation == pFh->m_is_translation);
+
+	for (int i = 0; i < NUM_REF_FRAMES; i++) {
+		assert(m_is_global[i] == pFh->m_is_global[i]);
+		assert(m_GmType[i] == pFh->m_GmType[i]);
+		assert(m_RefValid[i] == pFh->m_RefValid[i]);
+		assert(m_RefOrderHint[i] == pFh->m_RefOrderHint[i]);
+		assert(m_RefFrameId[i] == pFh->m_RefFrameId[i]);
+	}
+
+	for (int i = 0; i < INTER_REFS_PER_FRAME; i++) {
+		assert(m_OrderHints[i] == pFh->m_OrderHints[i]);
+		assert(m_expectedFrameId[i] == pFh->m_expectedFrameId[i]);
+	}
+
+
+	assert(m_PrevFrameID == pFh->m_PrevFrameID);
+	//assert(m_FrameWidth == pFh->m_FrameWidth);
+	//assert(m_FrameHeight == pFh->m_FrameHeight);
+	//assert(m_SuperresDenom == pFh->m_SuperresDenom);
+	//assert(m_UpscaledWidth == pFh->m_UpscaledWidth);
+
+	//assert(m_RenderWidth == pFh->m_RenderWidth);
+	//assert(m_RenderHeight == pFh->m_RenderHeight);
+
+	//assert(m_MiCols == pFh->m_MiCols);
+	//assert(m_MiRows == pFh->m_MiRows);
+
+	//assert(m_sbCols == pFh->m_sbCols);
+	//assert(m_sbRows == pFh->m_sbRows);
+	//assert(m_sbShift == pFh->m_sbShift);
+	//assert(m_sbSize == pFh->m_sbSize);
+	//assert(m_maxTileWidthSb == pFh->m_maxTileWidthSb);
+	//assert(m_maxTileAreaSb == pFh->m_maxTileAreaSb);
+	//assert(m_minLog2TileCols == pFh->m_minLog2TileCols);
+	//assert(m_minLog2TileRows == pFh->m_minLog2TileRows);
+	//assert(m_maxLog2TileCols == pFh->m_maxLog2TileCols);
+
+	//assert(m_maxLog2TileRows == pFh->m_maxLog2TileRows);
+	//assert(m_minLog2Tiles == pFh->m_minLog2Tiles);
+	//assert(m_TileColsLog2 == pFh->m_TileColsLog2);
+	//assert(m_TileRowsLog2 == pFh->m_TileRowsLog2);
+	//assert(m_maxLog2TileCol == pFh->m_maxLog2TileCol);
+	//assert(m_tileWidthSb == pFh->m_tileWidthSb);
+
+	//for (int i = 0; i <= MAX_TILE_COLS; i++) {
+	//	assert(m_MiColStarts[i] == pFh->m_MiColStarts[i]);
+	//	assert(m_MiRowStarts[i] == pFh->m_MiRowStarts[i]);
+	//}
+
+	//assert(m_TileCols == pFh->m_TileCols);
+	//assert(m_TileRows == pFh->m_TileRows);
+	//assert(m_tileHeightSb == pFh->m_tileHeightSb);
+	//assert(m_widestTileSb == pFh->m_widestTileSb);
+	//assert(m_maxTileHeightSb == pFh->m_maxTileHeightSb);
+	//assert(m_TileSizeBytes == pFh->m_TileSizeBytes);
+
+
+	assert(m_CodedLossless == pFh->m_CodedLossless);
+	assert(m_AllLossless == pFh->m_AllLossless);
+	assert(m_tile_start_and_end_present_flag == pFh->m_tile_start_and_end_present_flag);
+
+	return 1;
+}
+
+
+void CFrameHeader::InitZeroParameterSet() {
+	memset(this, 0, sizeof(*this));
+	//m_idLen = 0;
+	//m_show_existing_frame = 0;
+	//m_frame_to_show_map_idx = 0;
+	//m_display_frame_id = 0;
+ //   m_frame_type = KEY_FRAME;
+	//m_show_frame = 0;
+	//m_showable_frame =0;
+	//m_error_resilient_mode = 0;
+	//m_frame_presentation_time = 0;
+
+	//m_refresh_frame_flags = 0;
+	//m_disable_cdf_update = 0;
+	//m_allow_screen_content_tools = 0;
+
+	//m_force_integer_mv = 0;
+	//m_current_frame_id = 0;
+	//m_frame_size_override_flag = 0;
+	//m_order_hint = 0;
+	//m_primary_ref_frame = 0;
+
+	//m_buffer_removal_time_present_flag = 0;
+	//m_refresh_frame_flagss = 0;
+
+	//for (int i = 0; i < MAX_NUM_OPERATING_POINTS; i++) {
+	//	m_buffer_removal_time[i] = 0;
+	//}
+	//for (int i = 0; i < INTER_REFS_PER_FRAME; i++) {
+	//	m_ref_order_hint[i] = 0;
+	//	m_ref_frame_idx[i] = 0;
+	//}
+
+	//m_allow_high_precision_mv = 0;
+	//m_use_ref_frame_mvs = 0;
+	//m_allow_intrabc = 0;
+
+	//m_frame_width_minus_1 = 0;
+	//m_frame_height_minus_1 = 0;
+
+	//m_use_superres = 0;
+	//m_coded_denom = 0;
+
+	//m_render_and_frame_size_different = 0;
+	//m_render_width_minus_1 = 0;
+	//m_render_height_minus_1 = 0;
+
+	//m_frame_refs_short_signaling = 0;
+	//m_last_frame_idx = 0;
+	//m_gold_frame_idx = 0;
+	//m_delta_frame_id_minus_1 = 0;
+
+	//m_found_ref = 0;
+
+	//m_is_filter_switchable = 0;
+	//m_interpolation_filter = 0;
+	//m_is_motion_mode_switchable = 0;
+	//m_disable_frame_end_update_cdf = 0;
+
+	//m_uniform_tile_spacing_flag = 0;
+	//m_increment_tile_cols_log2 = 0;
+	//m_increment_tile_rows_log2 = 0;
+	//m_width_in_sbs_minus_1 = 0;
+	//m_height_in_sbs_minus_1 = 0;
+	//m_context_update_tile_id = 0;
+	//m_tile_size_bytes_minus_1 = 0;
+
+	//m_base_q_idx = 0;
+	//m_diff_uv_delta = 0;
+	//m_using_qmatrix = 0;
+	//m_qm_y = 0;
+	//m_qm_u = 0;
+	//m_qm_v = 0;
+
+	//m_delta_coded =0;
+	//m_delta_q =0;
+	//m_DeltaQYDc = 0;
+	//m_DeltaQUDc = 0;
+	//m_DeltaQUAc = 0;
+	//m_DeltaQVDc = 0;
+	//m_DeltaQVAc = 0;
+
+	//m_segmentation_enabled = 0;
+	//m_segmentation_update_map = 0;
+	//m_segmentation_temporal_update = 0;
+	//m_segmentation_update_data = 0;
+	//m_feature_enabled = 0;
+	//m_feature_value = 0;
+
+	//m_delta_q_present = 0;
+	//m_delta_q_res = 0;
+	//m_delta_lf_present = 0;
+	//m_delta_lf_res = 0;
+	//m_delta_lf_multi = 0;
+
+	//for (int i = 0; i < 4; i++) {
+	//	m_loop_filter_level[i] = 0;
+	//}
+
+	//m_loop_filter_sharpness = 0;
+	//m_loop_filter_delta_enabled = 0;
+	//m_loop_filter_delta_update = 0;
+
+	//for (int i = 0; i < TOTAL_REFS_PER_FRAME; i++) {
+	//	m_update_ref_delta[i] = 0;
+	//	m_loop_filter_ref_deltas[i] = 0;
+	//}
+	//for (int i = 0; i < 2; i++) {
+	//	m_update_mode_delta[i] = 0;
+	//	m_loop_filter_mode_deltas[i] =0;
+	//}
+
+	//m_cdef_damping_minus_3 =;
+	//m_cdef_bits == pFh->m_cdef_bits);
+	//m_CdefDamping == pFh->m_CdefDamping);
+
+	//for (int i = 0; i < 8; i++) {
+	//	m_cdef_y_pri_strength[i] == pFh->m_cdef_y_pri_strength[i]);
+	//	m_cdef_y_sec_strength[i] == pFh->m_cdef_y_sec_strength[i]);
+	//	m_cdef_uv_pri_strength[i] == pFh->m_cdef_uv_pri_strength[i]);
+	//	m_cdef_uv_sec_strength[i] == pFh->m_cdef_uv_sec_strength[i]);
+	//}
+
+	//for (int i = 0; i < 3; i++) {
+	//	m_lr_type[i] == pFh->m_lr_type[i]);
+	//	m_FrameRestorationType[i] == pFh->m_FrameRestorationType[i]);
+	//	m_LoopRestorationSize[i] == pFh->m_LoopRestorationSize[i]);
+	//}
+
+	//m_lr_unit_shift == pFh->m_lr_unit_shift);
+	//m_lr_unit_extra_shift == pFh->m_lr_unit_extra_shift);
+	//m_lr_uv_shift == pFh->m_lr_uv_shift);
+	//m_UsesLr == pFh->m_UsesLr);
+	//m_usesChromaLr == pFh->m_usesChromaLr);
+
+	//m_tx_mode_select == pFh->m_tx_mode_select);
+	//m_TxMode == pFh->m_TxMode);
+
+
+	//m_reference_select == pFh->m_reference_select);
+	//m_skipModeAllowed == pFh->m_skipModeAllowed);
+	//m_forwardIdx == pFh->m_forwardIdx);
+	//m_backwardIdx == pFh->m_backwardIdx);
+	//m_forwardHint == pFh->m_forwardHint);
+
+	//m_secondForwardIdx == pFh->m_secondForwardIdx);
+	//m_secondForwardHint == pFh->m_secondForwardHint);
+	//m_skip_mode_present == pFh->m_skip_mode_present);
+
+	//for (int i = 0; i < 2; i++) {
+	//	m_SkipModeFrame[i] == pFh->m_SkipModeFrame[i]);
+	//}
+
+	//m_allow_warped_motion == pFh->m_allow_warped_motion);
+	//m_reduced_tx_set == pFh->m_reduced_tx_set);
+	//m_is_rot_zoom == pFh->m_is_rot_zoom);
+	//m_is_translation == pFh->m_is_translation);
+
+	//for (int i = 0; i < NUM_REF_FRAMES; i++) {
+	//	m_is_global[i] == pFh->m_is_global[i]);
+	//	m_GmType[i] == pFh->m_GmType[i]);
+	//	m_RefValid[i] == pFh->m_RefValid[i]);
+	//	m_RefOrderHint[i] == pFh->m_RefOrderHint[i]);
+	//	m_RefFrameId[i] == pFh->m_RefFrameId[i]);
+	//}
+
+	//for (int i = 0; i < INTER_REFS_PER_FRAME; i++) {
+	//	m_OrderHints[i] == pFh->m_OrderHints[i]);
+	//	m_expectedFrameId[i] == pFh->m_expectedFrameId[i]);
+	//}
+
+
+	//m_PrevFrameID == pFh->m_PrevFrameID);
+	////m_FrameWidth == pFh->m_FrameWidth);
+	////m_FrameHeight == pFh->m_FrameHeight);
+	////m_SuperresDenom == pFh->m_SuperresDenom);
+	////m_UpscaledWidth == pFh->m_UpscaledWidth);
+
+	////m_RenderWidth == pFh->m_RenderWidth);
+	////m_RenderHeight == pFh->m_RenderHeight);
+
+	////m_MiCols == pFh->m_MiCols);
+	////m_MiRows == pFh->m_MiRows);
+
+	////m_sbCols == pFh->m_sbCols);
+	////m_sbRows == pFh->m_sbRows);
+	////m_sbShift == pFh->m_sbShift);
+	////m_sbSize == pFh->m_sbSize);
+	////m_maxTileWidthSb == pFh->m_maxTileWidthSb);
+	////m_maxTileAreaSb == pFh->m_maxTileAreaSb);
+	////m_minLog2TileCols == pFh->m_minLog2TileCols);
+	////m_minLog2TileRows == pFh->m_minLog2TileRows);
+	////m_maxLog2TileCols == pFh->m_maxLog2TileCols);
+
+	////m_maxLog2TileRows == pFh->m_maxLog2TileRows);
+	////m_minLog2Tiles == pFh->m_minLog2Tiles);
+	////m_TileColsLog2 == pFh->m_TileColsLog2);
+	////m_TileRowsLog2 == pFh->m_TileRowsLog2);
+	////m_maxLog2TileCol == pFh->m_maxLog2TileCol);
+	////m_tileWidthSb == pFh->m_tileWidthSb);
+
+	////for (int i = 0; i <= MAX_TILE_COLS; i++) {
+	////	m_MiColStarts[i] == pFh->m_MiColStarts[i]);
+	////	m_MiRowStarts[i] == pFh->m_MiRowStarts[i]);
+	////}
+
+	////m_TileCols == pFh->m_TileCols);
+	////m_TileRows == pFh->m_TileRows);
+	////m_tileHeightSb == pFh->m_tileHeightSb);
+	////m_widestTileSb == pFh->m_widestTileSb);
+	////m_maxTileHeightSb == pFh->m_maxTileHeightSb);
+	////m_TileSizeBytes == pFh->m_TileSizeBytes);
+
+
+	//m_CodedLossless == pFh->m_CodedLossless);
+	//m_AllLossless == pFh->m_AllLossless);
+	//assert(m_tile_start_and_end_present_flag == pFh->m_tile_start_and_end_present_flag);
 }

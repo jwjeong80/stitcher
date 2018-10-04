@@ -22,7 +22,7 @@
 #include <errno.h>
 
 #include "AV1StitcherApi.h"
-
+#include "ETimer.h"
 #include "AV1File.h"
 
 // definitions
@@ -188,7 +188,10 @@ uint32_t __stdcall OnBStrStitchProc(void* pThis)
 	uint32_t    uiNumTileCols = pThreadArg->uiNumTileCols;
 	uint32_t    uiNumBStreams = pThreadArg->uiNumTileRows * pThreadArg->uiNumTileCols;
 	bool        bAnnexBFlag = pThreadArg->bAnnexB;
-
+	
+	CETimer     StitchTimer;
+	CETimer     FileReadTimer;
+	CETimer		FileWriteTimer;
 	LONGLONG    llAccReadTime = 0;
 	LONGLONG	llAccWriteTime = 0;
 
@@ -230,11 +233,11 @@ uint32_t __stdcall OnBStrStitchProc(void* pThis)
 		}
 	}
 
-	//if (!AV1FileOut.Open(pThreadArg->cFileNames[0], LargeFile::OM_WRITEONLY))
-	//{
-	//    fprintf(stdout, "Failure: failed to open bitstream file `%s' for writing\n", pThreadArg->cFileNames[0]);
-	//    goto PROC_FAIL;
-	//}
+	if (!AV1FileOut.Open(pThreadArg->cFileNames[0], LargeFile::OM_WRITEONLY))
+	{
+	    fprintf(stdout, "Failure: failed to open bitstream file `%s' for writing\n", pThreadArg->cFileNames[0]);
+	    goto PROC_FAIL;
+	}
 
 	// 2) create input bitstream buffers
 	for (int i = 0; i < (int)uiNumBStreams; i++)
@@ -265,8 +268,10 @@ uint32_t __stdcall OnBStrStitchProc(void* pThis)
 	}
 
 	int j = 0;
+	StitchTimer.Start();
 	while (!b_ctrl_c && j < 2)//&& uiNumFrames < 5)
 	{
+		FileReadTimer.Start();
 		// extract access units from bitstreams
 		for (int i = 0; i < (int)uiNumBStreams; i++)
 		{
@@ -301,33 +306,19 @@ uint32_t __stdcall OnBStrStitchProc(void* pThis)
 			type = (OBU_TYPE)((pAV1OBU[i].pMemAddrOfOBU[15] & 0x78) >> 3);
 			cout << type << endl;
 
-			//if (pAV1OBU[i].uiNumOfOBU == 0)
-			//{
-			//    fprintf(stdout, "Error: Can not find start code!\n");
-			//    goto PROC_END;
-			//}
-
-			//pAV1OBU[i].pEachOBU[pAV1OBU[i].uiNumOfOBU] = NULL;  // Indicate last NALU boundary
-			//pAV1OBU[i].uiEachOBUSize[pAV1OBU[i].uiNumOfOBU] = 0;
 		}
+		llAccReadTime += FileReadTimer.Stop();
 		j++;
 		// stitch all access units into single stream (HevcAuOut updated)
 		//uiStitchFlags = (uiNumFrames) ? NO_INPUT_FLAGS_AV1 : WRITE_GLB_HDRS_AV1;
 		uiStitchFlags = 0;
 		if (Keti_AV1_Stitcher_StitchSingleOBU(pcBStrStitcherHandle, pAV1OBU, uiStitchFlags, &AV1OBUOut))
 		{
-			FILE *outfile = fopen("merge.obu", "ab");
-			fwrite(AV1OBUOut.pMemAddrOfOBU, 1, AV1OBUOut.uiSizeOfOBUs, outfile);
-			fclose(outfile);
-			//uint32_t uiObuSize = 0;
-			//for (uint32_t i = 0; i < HevcAuOut.uiNumOfNALU; i++) {
-			//	uiAuSize += HevcAuOut.uiNALUSize[i];
-			//}
-			//FileWriteTimer.Start();
-			//// 5) write memory buffer into file
-			//HevcFileOut.Write(HevcAuOut.pNALU[0], uiAuSize);
-			//fprintf(stdout, "\r%d frames are completely stitched..\n", ++uiNumFrames);
-			//llAccWriteTime += FileWriteTimer.Stop();
+			FileWriteTimer.Start();
+			// 5) write memory buffer into file
+			AV1FileOut.Write(AV1OBUOut.pMemAddrOfOBU, AV1OBUOut.uiSizeOfOBUs);
+			fprintf(stdout, "\r%d frames are completely stitched..\n", ++uiNumFrames);
+			llAccWriteTime += FileWriteTimer.Stop();
 		}
 		else
 		{
@@ -336,6 +327,12 @@ uint32_t __stdcall OnBStrStitchProc(void* pThis)
 	}
 
 PROC_END:
+	StitchTimer.Stop();
+	LONGLONG stitch_time = StitchTimer.DurationInMilliSeconds();
+	LONGLONG read_time = FileReadTimer.calcDurationInMilliSeconds(llAccReadTime);
+	LONGLONG write_time = FileWriteTimer.calcDurationInMilliSeconds(llAccWriteTime);
+	fprintf(stdout, "\nTotal Frames: %d, Stitching Speed: %.2f (fps)\nTotal Stitching Time: %I64d (msec), File Read Time: %I64d, File Write Time: %I64d\n",
+		uiNumFrames, (double)(uiNumFrames * 1000.0 / (stitch_time - read_time - write_time)), stitch_time, read_time, write_time);
 	// 6) Destroy
 	if (pcBStrStitcherHandle)
 	{
@@ -359,7 +356,7 @@ PROC_FAIL:
 	//		pAV1Files[i].Close();
 	//	delete[] pAV1Files;
 	//}
-	//   AV1FileOut.Close();
+	  AV1FileOut.Close();
 
 	if (pAV1OBU)
 	{

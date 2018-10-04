@@ -55,6 +55,48 @@ CAV1File::~CAV1File(void)
 {
 }
 
+
+bool CAV1File::Open(const char* rcFilename, enum LargeFile::OpenMode eOpenMode, int iPermMode/*=0777*/)
+{
+	if (!m_File.open(rcFilename, eOpenMode, iPermMode))
+		return false;
+
+	m_File.seek(0, SEEK_END);
+	m_nFileLength = m_File.tell();
+	m_File.seek(0, SEEK_SET);
+
+	return true;
+}
+
+bool CAV1File::Close()
+{
+	return m_File.close();
+}
+
+bool CAV1File::Reset()
+{
+	if (m_File.is_open())
+		return m_File.seek(0, SEEK_SET);
+	else
+		return false;
+}
+
+int64_t	CAV1File::getPosition()
+{
+	if (m_File.is_open())
+		return m_File.tell();
+	else
+		return 0;
+}
+
+bool CAV1File::setPosition(int64_t iPos)
+{
+	if (m_File.is_open())
+		return m_File.seek(iPos, SEEK_SET);
+	else
+		return false;
+}
+
 bool CAV1File::OpenOBU(const char* rcFilename)
 {
 	m_OBUCtx.avx_ctx.filename = rcFilename;
@@ -93,7 +135,7 @@ inline bool 	IsSuffixNAL(int nalUnitType)
 }
 #define SHVC_EXT	1
 
-eReturnStatusAV1 CAV1File::ExtractOBU(/*[in]*/uint8_t* pBuf, /*[in]*/uint32_t dwBufSize, /*[out]*/OBU* pOBU)
+eReturnStatus CAV1File::ExtractOBU(/*[in]*/uint8_t* pBuf, /*[in]*/uint32_t dwBufSize, /*[out]*/OBU* pOBU)
 {
 	uint8_t*	pOrgBuf = pBuf;
 	uint8_t*	pOutBuf = NULL;	// start position of buffer

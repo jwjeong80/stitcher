@@ -27,6 +27,7 @@ static int tile_log2(int blk_size, int target) {
 class CFrameHeader : CBitReader
 {
 public:
+	void InitZeroParameterSet();
 
 	void FhParserShowExistingFrame(int show_existing_frame) { m_show_existing_frame = show_existing_frame; }
 	void FhParserFrameToShowMapIdx(int frame_to_show_map_idx) { m_frame_to_show_map_idx = frame_to_show_map_idx; }
@@ -204,6 +205,8 @@ public:
 		// So, the following check is more accurate.
 		return !(m_UpscaledWidth == m_FrameWidth);
 	}
+
+	uint32_t FrameHeaderCompare(CFrameHeader *pFh);
 
 
 	int m_ParserIdx;

@@ -4,59 +4,101 @@
 
 CSequenceHeader::CSequenceHeader()
 {
+	printf("call intit %d", m_ParserIdx);
+	m_seq_profile = PROFILE_0;
+	m_still_picture = 0;
+	m_reduced_still_picture_header = 0;
+	m_timing_info_present_flag = 0;
+	m_decoder_model_info_present_flag = 0;
+	m_initial_display_delay_present_flag = 0;
 
+	m_operating_points_cnt_minus_1 = 0;
+
+	for (int i = 0; i < MAX_NUM_OPERATING_POINTS; i++) {
+		m_operating_point_idc[i] = 0;
+		m_seq_level_idx[i].major = 0;
+		m_seq_level_idx[i].minor = 0;
+		m_seq_tier[i] = 0;
+		m_initial_display_delay_minus_1[i] = 0;
+	}
+
+	for (int i = 0; i < MAX_NUM_OPERATING_POINTS + 1; i++) {
+		m_op_params[i].bitrate = 0;
+		m_op_params[i].buffer_size = 0;
+		m_op_params[i].decoder_buffer_delay = 0;
+		m_op_params[i].decoder_model_present_for_this_op = 0;
+		m_op_params[i].display_model_param_present_flag = 0;
+		m_op_params[i].encoder_buffer_delay = 0;
+		m_op_params[i].initial_display_delay_present_for_this_op = 0;
+		m_op_params[i].low_delay_mode_flag = 0;
+	}
+
+	m_timing_info.equal_picture_interval = 0;
+	m_timing_info.num_ticks_per_picture_minus_1 = 0;
+	m_timing_info.num_units_in_display_tick = 0;
+	m_timing_info.time_scale = 0;
+
+	m_decoder_model_info.buffer_delay_length_minus_1 = 0;
+	m_decoder_model_info.buffer_removal_time_length_minus_1 = 0;
+	m_decoder_model_info.frame_presentation_time_length_minus_1 = 0;
+	m_decoder_model_info.num_units_in_decoding_tick = 0;
+
+
+	m_frame_width_bits_minus_1 = 0;
+	m_frame_height_bits_minus_1 = 0;
+	m_max_frame_width_minus_1 = 0;
+	m_max_frame_height_minus_1 = 0;
+	m_FrameWidth = 0;
+	m_FrameHeight = 0;
+	m_frame_id_numbers_present_flag = 0;
+	m_delta_frame_id_length_minus_2 = 0;
+	m_additional_frame_id_length_minus_1 = 0;
+	m_use_128x128_superblock = 0;  // Size of the superblock used for this frame
+	m_enable_filter_intra = 0;
+	m_enable_intra_edge_filter = 0;
+
+	m_enable_interintra_compound = 0;
+	m_enable_masked_compound = 0;
+	m_enable_warped_motion = 0;
+	m_enable_dual_filter = 0;
+	m_enable_order_hint = 0;
+	m_enable_jnt_comp = 0;
+	m_enable_ref_frame_mvs = 0;
+	m_seq_choose_screen_content_tools = 0;
+	m_seq_force_screen_content_tools = 0;
+	m_seq_choose_integer_mv = 0;
+	m_seq_force_integer_mv = 0;
+	m_order_hint_bits_minus_1 = 0;
+
+	m_enable_superres;
+	m_enable_cdef = 0;
+	m_enable_restoration = 0;
+
+	m_high_bitdepth = 0;
+	m_twelve_bit = 0;
+	m_mono_chrome = 0;
+	m_color_description_present_flag = 0;
+	m_color_primaries = 0;
+	m_transfer_characteristics = 0;
+	m_matrix_coefficients = 0;
+	m_color_range = 0;
+	m_subsampling_x = 0;
+	m_subsampling_y = 0;
+	m_chroma_sample_position = 0;
+	m_separate_uv_delta_q = 0;
+	m_film_grain_params_present = 0;
+
+	m_BitDepth = 0;
+	m_NumPlanes = 0;
+	m_OrderHintBits = 0;
 }
 CSequenceHeader::~CSequenceHeader()
 {
 
 }
-
-
-ShManager::ShManager()
-{
+void CSequenceHeader::ShInitialize() {
 
 }
-
-ShManager::~ShManager()
-{
-
-}
-
-void ShManager::Init()
-{
-	//m_nMinVpsId = MAX_NUM_VPS;
-	//m_nMinSpsId = MAX_NUM_SPS;
-	//m_nMinPpsId = MAX_NUM_PPS;
-
-	int		i;
-	for (i = 0; i < 1; i++)
-		m_ShBuffer[i] = NULL;
-}
-
-void ShManager::Destroy()
-{
-	int		i;
-	for (i = 0; i < 1; i++)
-	{
-		SAFE_DELETES(m_ShBuffer[i]);
-	}
-}
-
-void ShManager::storeSequenceHeader(CSequenceHeader *seqHeader)
-{
-	if (m_ShBuffer[0])
-	{
-		SAFE_DELETES(m_ShBuffer[0]);
-	}
-	m_ShBuffer[0] = seqHeader;
-	//if (vps->getVPSId() < m_nMinVpsId)
-	//{
-	//	m_nMinVpsId = vps->getVPSId();
-	//}
-};
-
-int CSequenceHeader::m_EntireFrameWidth = 0;
-int CSequenceHeader::m_EntireFrameHeight = 0;
 
 int CSequenceHeader::ShParserSeqLevelIdx(int idx, CBitReader *rb) {
 	const uint8_t seq_level_idx = rb->AomRbReadLiteral(LEVEL_BITS);
@@ -107,13 +149,6 @@ void CSequenceHeader::ShParserSequenceInfo(CBitReader *rb) {
 
 	m_FrameWidth = m_max_frame_width_minus_1 + 1;
 	m_FrameHeight = m_max_frame_height_minus_1 + 1;
-
-	//get Entire frame size
-	//Entire frame size is declared by static variable
-	if (m_ParserIdx < m_uiNumTileCols) 
-		m_EntireFrameWidth += m_FrameWidth;
-	if (m_ParserIdx % m_uiNumTileCols == 0)
-		m_EntireFrameHeight += m_FrameHeight;
 
 	if (m_reduced_still_picture_header)
 		m_frame_id_numbers_present_flag = 0;
@@ -291,7 +326,7 @@ void CSequenceHeader::ShParserColorConfig(CBitReader *rb) {
 }
 
 
-uint32_t CSequenceHeader::write_sequence_header_obu(uint8_t *const dst, int bit_buffer_offset) {
+uint32_t CSequenceHeader::write_sequence_header_obu(FrameSize_t *tileSizes, uint8_t *const dst, int bit_buffer_offset) {
 	CBitWriter wb(dst, bit_buffer_offset);
 	uint32_t size = 0;
 	uint32_t before_size = bit_buffer_offset >> 3;
@@ -348,7 +383,7 @@ uint32_t CSequenceHeader::write_sequence_header_obu(uint8_t *const dst, int bit_
 			}
 		}
 	}
-	write_sequence_header(&wb);
+	write_sequence_header(tileSizes, &wb);
 
 	write_color_config(&wb);
 
@@ -413,20 +448,28 @@ void CSequenceHeader::write_dec_model_op_parameters(CBitWriter *wb,	int op_num) 
 }
 
 
-void CSequenceHeader::write_sequence_header(CBitWriter *wb) {
+void CSequenceHeader::write_sequence_header(FrameSize_t *tileSizes, CBitWriter *wb) {
+
+	m_FrameWidth = 0;
+	m_FrameHeight = 0;
+	//calculate total size
+	for (int i = 0; i < m_uiNumTileCols; i++)
+		m_FrameWidth += tileSizes[i].frame_width;
+
+	for (int i = 0; i < m_uiNumTileRows; i++)
+		m_FrameHeight += tileSizes[i*m_uiNumTileCols].frame_height;
 
 	const int num_bits_width =
-		(m_EntireFrameWidth > 1) ? get_msb(m_EntireFrameWidth - 1) + 1 : 1;
+		(m_FrameWidth > 1) ? get_msb(m_FrameWidth - 1) + 1 : 1;
 	// max((int)ceil(log2(max_frame_height)), 1)
 	const int num_bits_height =
-		(m_EntireFrameHeight > 1) ? get_msb(m_EntireFrameHeight - 1) + 1 : 1;
+		(m_FrameHeight > 1) ? get_msb(m_FrameHeight - 1) + 1 : 1;
 	assert(num_bits_width <= 16);
 	assert(num_bits_height <= 16);
 
 	m_frame_width_bits_minus_1 = num_bits_width - 1;
 	m_frame_height_bits_minus_1 = num_bits_height - 1;
-	m_FrameWidth = m_EntireFrameWidth;
-	m_FrameHeight = m_EntireFrameHeight;
+
 	m_max_frame_width_minus_1 = m_FrameWidth - 1;
 	m_max_frame_height_minus_1 = m_FrameHeight - 1;
 
@@ -570,4 +613,97 @@ void CSequenceHeader::write_color_config(CBitWriter *wb) {
 		}
 	}
 	wb->aom_wb_write_bit(m_separate_uv_delta_q);
+}
+
+uint32_t CSequenceHeader::SequencHeaderCompare(CSequenceHeader *pSh) {
+
+	assert(m_seq_profile == pSh->m_seq_profile);
+	assert(m_still_picture == pSh->m_still_picture);
+	assert(m_reduced_still_picture_header == pSh->m_reduced_still_picture_header);
+	assert(m_timing_info_present_flag == pSh->m_timing_info_present_flag);
+	assert(m_decoder_model_info_present_flag == pSh->m_decoder_model_info_present_flag);
+	assert(m_initial_display_delay_present_flag == pSh->m_initial_display_delay_present_flag);
+	assert(m_operating_points_cnt_minus_1 == pSh->m_operating_points_cnt_minus_1);
+
+	for (int i = 0; i < m_operating_points_cnt_minus_1+1; i++) {
+		assert(m_operating_point_idc[i] == pSh->m_operating_point_idc[i]);
+		assert(m_seq_level_idx[i].major == pSh->m_seq_level_idx[i].major);
+		assert(m_seq_level_idx[i].minor == pSh->m_seq_level_idx[i].minor);
+		assert(m_seq_tier[i] == pSh->m_seq_tier[i]);
+	}
+
+	for (int i = 0; i < MAX_NUM_OPERATING_POINTS + 1; i++) {
+		assert(m_op_params[i].bitrate == pSh->m_op_params[i].bitrate);
+		assert(m_op_params[i].buffer_size == pSh->m_op_params[i].buffer_size);
+		assert(m_op_params[i].decoder_buffer_delay == pSh->m_op_params[i].decoder_buffer_delay);
+		assert(m_op_params[i].decoder_model_present_for_this_op == pSh->m_op_params[i].decoder_model_present_for_this_op);
+		assert(m_op_params[i].display_model_param_present_flag == pSh->m_op_params[i].display_model_param_present_flag);
+		assert(m_op_params[i].encoder_buffer_delay == pSh->m_op_params[i].encoder_buffer_delay);
+		assert(m_op_params[i].initial_display_delay_present_for_this_op == pSh->m_op_params[i].initial_display_delay_present_for_this_op);
+		assert(m_op_params[i].low_delay_mode_flag == pSh->m_op_params[i].low_delay_mode_flag);
+	}
+	//
+	assert(m_timing_info.equal_picture_interval == pSh->m_timing_info.equal_picture_interval);
+	assert(m_timing_info.num_ticks_per_picture_minus_1 == pSh->m_timing_info.num_ticks_per_picture_minus_1);
+	assert(m_timing_info.num_units_in_display_tick == pSh->m_timing_info.num_units_in_display_tick);
+	assert(m_timing_info.time_scale == pSh->m_timing_info.time_scale);
+
+	//
+	assert(m_decoder_model_info.buffer_delay_length_minus_1 == pSh->m_decoder_model_info.buffer_delay_length_minus_1);
+	assert(m_decoder_model_info.buffer_removal_time_length_minus_1 == pSh->m_decoder_model_info.buffer_removal_time_length_minus_1);
+	assert(m_decoder_model_info.frame_presentation_time_length_minus_1 == pSh->m_decoder_model_info.frame_presentation_time_length_minus_1);
+	assert(m_decoder_model_info.num_units_in_decoding_tick == pSh->m_decoder_model_info.num_units_in_decoding_tick);
+	
+	for (int i = 0; i < MAX_NUM_OPERATING_POINTS; i++) {
+		assert(m_initial_display_delay_minus_1[i] == pSh->m_initial_display_delay_minus_1[i]);
+	}
+
+	//no check
+	//int m_frame_width_bits_minus_1;
+	//int m_frame_height_bits_minus_1;
+	//int m_max_frame_width_minus_1;
+	//int m_max_frame_height_minus_1;
+	//int m_FrameWidth;
+	//int m_FrameHeight;
+	assert(m_frame_id_numbers_present_flag == pSh->m_frame_id_numbers_present_flag);
+	assert(m_delta_frame_id_length_minus_2 == pSh->m_delta_frame_id_length_minus_2);
+	assert(m_additional_frame_id_length_minus_1 == pSh->m_additional_frame_id_length_minus_1);
+	assert(m_use_128x128_superblock == pSh->m_use_128x128_superblock);
+	assert(m_enable_filter_intra == pSh->m_enable_filter_intra);
+	assert(m_enable_intra_edge_filter == pSh->m_enable_intra_edge_filter);
+
+	assert(m_enable_interintra_compound == pSh->m_enable_interintra_compound);
+	assert(m_enable_masked_compound == pSh->m_enable_masked_compound);
+	assert(m_enable_warped_motion == pSh->m_enable_warped_motion);
+	assert(m_enable_dual_filter == pSh->m_enable_dual_filter);
+	assert(m_enable_order_hint == pSh->m_enable_order_hint);
+	assert(m_enable_jnt_comp == pSh->m_enable_jnt_comp);
+	assert(m_enable_ref_frame_mvs == pSh->m_enable_ref_frame_mvs);
+	assert(m_seq_choose_screen_content_tools == pSh->m_seq_choose_screen_content_tools);
+	assert(m_seq_force_integer_mv == pSh->m_seq_force_integer_mv);
+	assert(m_seq_choose_integer_mv == pSh->m_seq_choose_integer_mv);
+	assert(m_order_hint_bits_minus_1 == pSh->m_order_hint_bits_minus_1);
+
+	assert(m_enable_superres == pSh->m_enable_superres);
+	assert(m_enable_cdef == pSh->m_enable_cdef);
+	assert(m_enable_restoration == pSh->m_enable_restoration);
+
+	assert(m_high_bitdepth == pSh->m_high_bitdepth);
+	assert(m_twelve_bit == pSh->m_twelve_bit);
+	assert(m_mono_chrome == pSh->m_mono_chrome);
+	assert(m_color_description_present_flag == pSh->m_color_description_present_flag);
+	assert(m_color_primaries == pSh->m_color_primaries);
+	assert(m_transfer_characteristics == pSh->m_transfer_characteristics);
+	assert(m_matrix_coefficients == pSh->m_matrix_coefficients);
+	assert(m_color_range == pSh->m_color_range);
+	assert(m_subsampling_x == pSh->m_subsampling_x);
+	assert(m_subsampling_y == pSh->m_subsampling_y);
+	assert(m_chroma_sample_position == pSh->m_chroma_sample_position);
+	assert(m_separate_uv_delta_q == pSh->m_separate_uv_delta_q);
+	assert(m_film_grain_params_present == pSh->m_film_grain_params_present);
+
+	assert(m_BitDepth == pSh->m_BitDepth);
+	assert(m_NumPlanes == pSh->m_NumPlanes);
+	assert(m_OrderHintBits == pSh->m_OrderHintBits);
+	return 1;
 }

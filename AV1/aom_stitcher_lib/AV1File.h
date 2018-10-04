@@ -20,7 +20,7 @@ struct OBU
 };
 #endif // MAX_NALU_NUM
 
-enum eReturnStatusAV1
+enum eReturnStatus
 {
 	RET_FALSE_AV1 = 0,
 	RET_TRUE_AV1 = 1,
@@ -98,12 +98,31 @@ public:
 	int obudec_read_obu_payload(FILE *f, size_t payload_length,
 		uint8_t *obu_data, size_t *bytes_read);
 
-	eReturnStatusAV1 ExtractOBU(/*[in]*/uint8_t* pBuf, /*[in]*/uint32_t dwBufSize, /*[out]*/OBU* pOBU);
+	eReturnStatus ExtractOBU(/*[in]*/uint8_t* pBuf, /*[in]*/uint32_t dwBufSize, /*[out]*/OBU* pOBU);
 
 	int file_is_obu(void);
+
+	bool		Open(const char* rcFilename, enum LargeFile::OpenMode eOpenMode, int iPermMode = 0777);
+	bool		Close();
+	bool		Reset();
+
+	bool        Read(void *pvBuffer, uint32_t uiCount, uint32_t& ruiBytesRead) { return m_File.read(pvBuffer, uiCount, ruiBytesRead); }
+	bool        Write(const void *pvBuffer, uint32_t uiCount) { return m_File.write(pvBuffer, uiCount); }
+
+	int64_t		getPosition();
+	bool		setPosition(int64_t iPos);
+
+	bool		IsEOF() { return m_nFileLength == getPosition(); }
+	bool		IsOpen() { return m_File.is_open(); }
+	int64_t		getLength() { return m_nFileLength; }
+
 private:
 
 	//const uint8_t*	FindStartCode2(const uint8_t* pStart, const uint8_t* pEnd,  /*[out]*/uint32_t& uiStartCodeSize);
 	struct ObuDecInputContext m_OBUCtx;
 	struct AvxInputContext    m_AomInputCtx;
+
+
+	LargeFile	m_File;
+	int64_t		m_nFileLength;
 };
