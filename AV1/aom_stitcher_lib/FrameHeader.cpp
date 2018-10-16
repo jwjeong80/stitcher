@@ -929,6 +929,14 @@ void CFrameHeader::write_tile_info(int use_128x128_superblock, FrameSize_t *tile
 	m_TileColsLog2 = tile_log2(1, m_uiNumTileCols);
 	m_TileRowsLog2 = tile_log2(1, m_uiNumTileRows);
 
+
+	if (m_uiNumTileCols * m_uiNumTileRows == 1) {
+		wb->aom_wb_write_bit(1);
+		wb->aom_wb_write_bit(0);
+		wb->aom_wb_write_bit(0);
+		return;
+	}
+
 	m_uniform_tile_spacing_flag = 0; //This flag has to be re-considered
 	wb->aom_wb_write_bit(m_uniform_tile_spacing_flag);
 

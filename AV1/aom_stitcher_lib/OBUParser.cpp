@@ -527,7 +527,7 @@ uint32_t COBUParser::ReadSequenceHeaderObu(CBitReader *rb)
 	return ((rb->AomRbReadBitOffset() - saved_bit_offset + 7) >> 3);
 }
 
-
+#define DEBUG_FH 1
 uint32_t COBUParser::ReadFrameHeaderObu(CBitReader *rb, const uint8_t *data, int trailing_bits_present, uint32_t num_frame_obu)
 {
 	const uint32_t saved_bit_offset = rb->AomRbReadBitOffset();
@@ -542,6 +542,7 @@ uint32_t COBUParser::ReadFrameHeaderObu(CBitReader *rb, const uint8_t *data, int
 	int FrameIsIntra = 1;
 	FRAME_TYPE frame_type;
 	int show_frame;
+
 
 	if (pSh->ShReadFrameIdNumbersPresentFlag()) {
 		idLen = pSh->ShReadAdditionalFrameIdLengthMinus1() +
@@ -1160,16 +1161,26 @@ uint32_t COBUParser::RewriteFrameHeaderObu(FrameSize_t *tile_sizes, uint8_t *con
 				wb.aom_wb_write_literal(pFh->FhReadGoldFrameIdx(), REF_FRAMES_LOG2);
 			}
 
-			
-			for (int ref_frame = LAST_FRAME; ref_frame <= ALTREF_FRAME; ++ref_frame) {
+			//bug
+			//for (int ref_frame = LAST_FRAME; ref_frame <= ALTREF_FRAME; ++ref_frame) {
+			//	if (!frame_refs_short_signaling) {
+			//		wb.aom_wb_write_literal(pFh->FhReadRefFramesIdx(ref_frame), REF_FRAMES_LOG2);
+			//	}
+			//	if (frame_id_numbers_present_flag) {
+			//		//Now frame_id_numbers_present_flag has to be 0
+			//		//not implemented
+			//	}
+			//}
+			for (int i = 0; i < INTER_REFS_PER_FRAME; i++) {
 				if (!frame_refs_short_signaling) {
-					wb.aom_wb_write_literal(pFh->FhReadRefFramesIdx(ref_frame), REF_FRAMES_LOG2);
+					wb.aom_wb_write_literal(pFh->FhReadRefFramesIdx(i), REF_FRAMES_LOG2);
 				}
 				if (frame_id_numbers_present_flag) {
 					//Now frame_id_numbers_present_flag has to be 0
 					//not implemented
 				}
 			}
+
 			if (frame_size_override_flag && !error_resilient_mode) {
 				pFh->write_frame_size_with_refs(&wb); //unimplemented
 			}

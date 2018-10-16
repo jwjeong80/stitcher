@@ -82,9 +82,6 @@ int CAV1BStrStitcher::StitchSingleOBU(const OBU *pInpOBUs, uint32_t uiAnnexBFlag
 	bool bRwSeqHdrsFlag;
 	bool bSeqHeaderSame = true;
 	 //decode all OBUs
-
-
-
 	//CSequenceHeader::InitilizeFrameSize();
 	uint32_t max_tile_size = 0;
 	for (int i = 0; i < m_uiNumParsers; i++)
@@ -189,9 +186,9 @@ int CAV1BStrStitcher::StitchSingleOBU(const OBU *pInpOBUs, uint32_t uiAnnexBFlag
 			//Copy frame buffer m_pOBUParser[m_uiNumParsers] from &m_pOBUParser[0]
 			m_pOBUParser[m_uiNumParsers]->FrameHeaderCopy(&m_pOBUParser[0]->getFrameHeaderBuffer(frame_obu_num), frame_obu_num);
 
-			//for (int parseIdx = 1; parseIdx < m_uiNumParsers; parseIdx++) {
-			//	m_pOBUParser[0]->FrameHdrCompare(&m_pOBUParser[parseIdx]->getFrameHeaderBuffer(frame_obu_num), frame_obu_num);
-			//}
+			for (int parseIdx = 1; parseIdx < m_uiNumParsers; parseIdx++) {
+				m_pOBUParser[0]->FrameHdrCompare(&m_pOBUParser[parseIdx]->getFrameHeaderBuffer(frame_obu_num), frame_obu_num);
+			}
 
 			//Write OBU Header
 			uint32_t obu_header_size = m_OBUWriter.write_obu_header(int(OBU_FRAME), 0 /*obu_extension*/, m_OBUWriter.getOBUOutBuf(), bit_offset);

@@ -23,6 +23,8 @@
 #endif
 #endif /* ATTRIBUTE_PACKED */
 
+#define DEBUG_BITSTREAM   1
+
 // definitions
 #define MAX_BIT_SIZE    (1024*1024)
 #define MAX_STREAMS     (440) /* 20x22 */

@@ -6,6 +6,8 @@ size_t CBitReader::AomRbBytesRead() {
 	return (m_bit_offset + 7) >> 3;
 }
 
+#define DEBUG_FH 0
+
 int CBitReader::AomRbReadBit() {
 	const uint32_t off = m_bit_offset;
 	const uint32_t p = off >> 3;
@@ -13,6 +15,12 @@ int CBitReader::AomRbReadBit() {
 	if (m_bit_buffer + p < m_bit_buffer_end) {
 		const int bit = (m_bit_buffer[p] >> q) & 1;
 		m_bit_offset = off + 1;
+#ifdef 0
+		FILE *fp = fopen("rb_debug.txt", "a");
+		fprintf(fp, "%d\t%d\n", m_bit_offset, bit);
+		fclose(fp);
+#endif
+
 		return bit;
 	}
 	else {

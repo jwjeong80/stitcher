@@ -15,6 +15,7 @@
 
 #include "bit_writer.h"
 
+#include <stdio.h>
 int CBitWriter::aom_wb_is_byte_aligned() {
   return (m_wb_bit_offset % CHAR_BIT == 0);
 }
@@ -35,6 +36,12 @@ void CBitWriter::aom_wb_write_bit(int bit) {
     m_wb_bit_buffer[p] |= bit << q;
   }
   m_wb_bit_offset = off + 1;
+
+#ifdef 0
+  FILE *fp = fopen("wb_debug.txt", "a");
+  fprintf(fp, "%d\t%d\n", m_wb_bit_offset, bit);
+  fclose(fp);
+#endif
 }
 
 void CBitWriter::aom_wb_overwrite_bit(int bit) {
